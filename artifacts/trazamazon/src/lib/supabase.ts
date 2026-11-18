@@ -48,7 +48,7 @@ export const defaultCooperativeProfile: CooperativeProfile = {
   annualCapacityMt: 45,
   responseTime: '< 2 horas',
   certifications: [
-    'Gold Supplier Agroforestal',
+    'Cooperativa Agroforestal Certificada',
     'Cero Deforestación (Sentinel-2)',
     'Criollo Nativo Certificado',
     'Orgánico USDA / UE',

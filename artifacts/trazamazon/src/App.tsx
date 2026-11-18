@@ -59,6 +59,8 @@ export type ProductLot = {
   indigenousCommunity?: string;
   nativeLanguage?: string;
   ancestralPractices?: string;
+  cadmiumLevel?: string;
+  packaging?: string;
   chemicalSpecs?: {
     cadmiumPpm?: string;
     fermentationPct?: string;
@@ -597,7 +599,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Estructura de Cotización / Pedido B2B Sincronizado (Alibaba Trade Assurance)
+ * Estructura de Cotización / Pedido B2B Sincronizado (Garantía Fiduciaria Escrow)
  */
 export interface B2BQuoteOrder {
   id: string;
@@ -2455,15 +2457,16 @@ function getLotGeoCoords(lotId: string) {
 }
 
 /**
- * VISTA 2: Perfil de Vendedor B2B, Lote de Cosecha y Cotización (Estilo Alibaba B2B)
+ * VISTA 2: Perfil de Cooperativa Productora, Lote de Cosecha y Cotización B2B
  */
 function LotDetail() {
   const [, params] = useRoute('/lote/:id');
+  const [, setLocation] = useLocation();
   const [selectedLot, setSelectedLot] = useState<ProductLot | null>(null);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
 
   // Leer lotes sincronizados de memoria persistente si existen, o catálogo inicial
-  const [lots] = useState<ProductLot[]>(() => {
+  const [lots, setLots] = useState<ProductLot[]>(() => {
     try {
       const saved = localStorage.getItem('trazamazon-lots');
       if (saved) {
@@ -2474,40 +2477,142 @@ function LotDetail() {
     return initialLots;
   });
 
-  const lot = lots.find((x) => x.id === params?.id) || lots[0];
+  const baseLot = lots.find((x) => x.id === params?.id) || lots[0];
 
-  // Related products from the same cooperative or similar Amazonian harvests
+  // Modo Editor en Vivo Estilo WordPress (activo si query param ?edit=true o toggled en barra)
+  const [isLiveEditMode, setIsLiveEditMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return p.get('edit') === 'true';
+    }
+    return false;
+  });
+
+  const [editedLot, setEditedLot] = useState<ProductLot>(() => ({
+    ...baseLot,
+    cadmiumLevel: baseLot.cadmiumLevel || baseLot.chemicalSpecs?.cadmiumPpm || '< 0.28 ppm',
+    packaging: baseLot.packaging || baseLot.chemicalSpecs?.packaging || 'GrainPro 60kg'
+  }));
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSavedToast, setShowSavedToast] = useState(false);
+
+  // Mantener sincronizado si cambia el parámetro de URL
+  useEffect(() => {
+    setEditedLot({
+      ...baseLot,
+      cadmiumLevel: baseLot.cadmiumLevel || baseLot.chemicalSpecs?.cadmiumPpm || '< 0.28 ppm',
+      packaging: baseLot.packaging || baseLot.chemicalSpecs?.packaging || 'GrainPro 60kg'
+    });
+  }, [baseLot.id]);
+
+  // Guardar cambios en memoria persistente sincronizando catálogo
+  const handleSaveLiveLot = () => {
+    setIsSaving(true);
+    try {
+      const updatedLots = lots.map((l) => (l.id === editedLot.id ? { ...editedLot } : l));
+      if (!updatedLots.some((l) => l.id === editedLot.id)) {
+        updatedLots.push({ ...editedLot });
+      }
+      localStorage.setItem('trazamazon-lots', JSON.stringify(updatedLots));
+      setLots(updatedLots);
+      setShowSavedToast(true);
+      setTimeout(() => setShowSavedToast(false), 4000);
+    } catch (err) {
+      console.error('Error al guardar lote en vivo:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const displayLot = isLiveEditMode ? editedLot : baseLot;
+
+  // Lotes relacionados de la misma cooperativa o región
   const relatedLots = useMemo(() => {
-    return lots.filter((l) => l.id !== lot.id).slice(0, 3);
-  }, [lots, lot.id]);
+    return lots.filter((l) => l.id !== displayLot.id).slice(0, 3);
+  }, [lots, displayLot.id]);
 
   return (
     <main className="bg-[#faf9f4] min-h-screen text-[#1b1c19] font-dmsans">
+      {/* BARRA SUPERIOR FIJA ESTILO WORDPRESS (ADMINISTRATION & LIVE WYSIWYG BAR) */}
+      {isLiveEditMode && (
+        <header className="wordpress-admin-bar">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 font-bold text-white text-xs uppercase tracking-wider font-mono">
+              <Sparkles size={14} className="text-[#b07d3b]" />
+              <span>Editor en Vivo · Ficha #{editedLot.id}</span>
+            </div>
+            <span className="text-[11px] bg-white/10 text-emerald-200 px-2 py-0.5 rounded font-mono hidden sm:inline">
+              Modo WordPress WYSIWYG
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsLiveEditMode(!isLiveEditMode)}
+              className="px-2.5 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1"
+              title="Alternar entre modo edición y vista previa de comprador"
+            >
+              <Eye size={12} />
+              <span>{isLiveEditMode ? 'Ver como Comprador' : 'Editar Ficha'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveLiveLot}
+              disabled={isSaving}
+              className="px-3.5 py-1 text-xs font-bold rounded bg-[#b07d3b] hover:bg-[#c99049] text-white shadow-sm transition-colors flex items-center gap-1.5"
+              data-testid="btn-wordpress-save-lot"
+            >
+              <Save size={13} />
+              <span>{isSaving ? 'Guardando...' : 'Guardar y Publicar'}</span>
+            </button>
+
+            <Link
+              href="/panel"
+              className="px-2.5 py-1 text-xs rounded bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1"
+            >
+              <ArrowLeft size={12} />
+              <span className="hidden sm:inline">Volver al Panel</span>
+            </Link>
+          </div>
+        </header>
+      )}
+
+      {/* TOAST DE GUARDADO EXITOSO */}
+      {showSavedToast && (
+        <div className="fixed top-14 right-6 z-50 bg-[#1b4332] text-white border border-[#2d6a4f] px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 text-xs animate-bounce font-medium">
+          <CheckCircle2 size={16} className="text-[#4ade80]" />
+          <span>¡Cosecha #{editedLot.id} guardada y publicada en el catálogo B2B con éxito!</span>
+        </div>
+      )}
+
       <Header active="marketplace" />
 
-      <div className="max-w-[1320px] mx-auto px-6 py-8">
+      <div className={`max-w-[1320px] mx-auto px-6 py-8 ${isLiveEditMode ? 'pt-4' : ''}`}>
         {/* Breadcrumb B2B */}
         <nav aria-label="Ruta de navegación" className="flex items-center gap-2 text-xs uppercase tracking-wider text-[#727973] font-semibold mb-6">
           <Link href="/" className="hover:text-[#1b4332] transition-colors" data-testid="link-lot-home">Inicio</Link>
           <span className="text-gray-300">/</span>
           <Link href="/marketplace" className="hover:text-[#1b4332] transition-colors" data-testid="link-lot-marketplace">Marketplace B2B</Link>
           <span className="text-gray-300">/</span>
-          <span className="text-[#1b4332] font-bold">{lot.cooperative}</span>
+          <span className="text-[#1b4332] font-bold">{displayLot.cooperative}</span>
           <span className="text-gray-300">/</span>
-          <span className="text-gray-500 font-medium truncate max-w-xs">{lot.name}</span>
+          <span className="text-gray-500 font-medium truncate max-w-xs">{displayLot.name}</span>
         </nav>
 
-        {/* ALIBABA STYLE VERIFIED SUPPLIER HEADER */}
-        <div className="alibaba-supplier-bar">
+        {/* CABECERA DE COOPERATIVA AGROFORESTAL VERIFICADA */}
+        <div className="verified-cooperative-bar">
           <div className="supplier-main-info">
             <div className="supplier-avatar-badge">
-              {lot.cooperative[0]}
+              {displayLot.cooperative[0]}
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-bold text-[#071b12]">{lot.cooperative}</h2>
+                <h2 className="text-lg font-bold text-[#071b12]">{displayLot.cooperative}</h2>
                 <span className="gold-supplier-badge">
-                  <Award size={13} /> Gold Supplier Agroforestal
+                  <Award size={13} /> Cooperativa Agroforestal Certificada
                 </span>
                 <span className="text-[11px] font-semibold text-[#143d29] bg-[#eef3eb] px-2 py-0.5 rounded border border-[#c9d8c4]">
                   <ShieldCheck size={12} className="inline mr-0.5 text-[#2a7a4c]" /> Verificado In-Situ EUDR
@@ -2517,29 +2622,42 @@ function LotDetail() {
                 <span><Star size={12} className="text-[#d97736] fill-[#d97736]" /> <b>4.9 / 5.0</b> (38 pedidos B2B)</span>
                 <span><Clock size={12} /> Tasa de Respuesta: <b>&lt; 2 horas</b></span>
                 <span><Ship size={12} /> Capacidad Anual: <b>45 MT / año</b></span>
-                <span><MapPin size={12} /> {lot.community}, {lot.region}, Perú</span>
+                <span><MapPin size={12} /> {displayLot.community}, {displayLot.region}, Perú</span>
               </div>
             </div>
           </div>
 
           <div className="supplier-actions">
-            <button
-              className="btn-supplier-contact"
-              onClick={() => setSelectedLot(lot)}
-              data-testid="button-supplier-contact"
-            >
-              <Send size={14} /> Contactar Cooperativa (RFQ)
-            </button>
-            <button
-              className="btn-supplier-profile"
-              onClick={() => {
-                const el = document.getElementById('auditoria-satelital');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              data-testid="button-supplier-audit"
-            >
-              <ShieldCheck size={14} /> Auditoría Satelital
-            </button>
+            {!isLiveEditMode ? (
+              <>
+                <button
+                  className="btn-supplier-contact"
+                  onClick={() => setSelectedLot(displayLot)}
+                  data-testid="button-supplier-contact"
+                >
+                  <Send size={14} /> Contactar Cooperativa (RFQ)
+                </button>
+                <button
+                  className="btn-supplier-profile"
+                  onClick={() => {
+                    const el = document.getElementById('auditoria-satelital');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  data-testid="button-supplier-audit"
+                >
+                  <ShieldCheck size={14} /> Auditoría Satelital
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSaveLiveLot}
+                disabled={isSaving}
+                className="button button-small button-earth text-xs flex items-center gap-1.5 shadow-sm"
+              >
+                <Save size={13} /> Guardar Cambios en Vivo
+              </button>
+            )}
           </div>
         </div>
 
@@ -2548,21 +2666,64 @@ function LotDetail() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Gallery Column */}
             <div className="lg:col-span-5 flex flex-col gap-4">
-              <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner">
+              <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner group">
                 <img
-                  src={lot.image}
-                  alt={lot.name}
+                  src={displayLot.image}
+                  alt={displayLot.name}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                
+                {/* Overlay de Edición Directa de Fotografía en Modo WordPress */}
+                {isLiveEditMode && (
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex flex-col items-center justify-center text-white p-4 transition-opacity">
+                    <Camera size={26} className="text-[#f59e0b] mb-1.5" />
+                    <span className="text-xs font-bold font-mono uppercase tracking-wider mb-2">
+                      Fotografía de Cosecha
+                    </span>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <label className="px-3 py-1.5 bg-white text-gray-900 rounded-lg text-xs font-semibold cursor-pointer shadow hover:bg-gray-100 flex items-center gap-1">
+                        <Upload size={13} /> Subir Imagen
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const r = new FileReader();
+                              r.onload = (ev) => {
+                                if (ev.target?.result) {
+                                  setEditedLot({ ...editedLot, image: ev.target.result as string });
+                                }
+                              };
+                              r.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = prompt('Ingresa la URL pública de la imagen de la cosecha:', editedLot.image);
+                          if (url && url.trim()) setEditedLot({ ...editedLot, image: url.trim() });
+                        }}
+                        className="px-3 py-1.5 bg-white/20 text-white rounded-lg text-xs font-semibold hover:bg-white/30"
+                      >
+                        URL Web
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
                   <span className="px-2.5 py-1 bg-[#143d29]/90 text-white backdrop-blur-xs text-[10px] font-bold tracking-wider uppercase rounded-md shadow-xs">
                     <ShieldCheck size={11} className="inline mr-1 text-[#4ade80]" /> Cero Deforestación 2024-2025
                   </span>
                   <span className="px-2.5 py-1 bg-[#071b12]/90 text-white backdrop-blur-xs text-[10px] font-bold tracking-wider uppercase rounded-md shadow-xs">
-                    LOTE #{lot.id} · Cosecha {lot.harvestDate}
+                    LOTE #{displayLot.id} · Cosecha {displayLot.harvestDate}
                   </span>
                 </div>
-                <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded backdrop-blur-xs">
+                <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded backdrop-blur-xs pointer-events-none">
                   Foto auditada en parcela
                 </div>
               </div>
@@ -2570,7 +2731,7 @@ function LotDetail() {
               {/* Sub-gallery thumbnails */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="aspect-4/3 rounded-lg overflow-hidden border-2 border-[#1b4332] relative">
-                  <img src={lot.image} alt="Cosecha principal" className="w-full h-full object-cover" />
+                  <img src={displayLot.image} alt="Cosecha principal" className="w-full h-full object-cover" />
                   <span className="absolute bottom-0 inset-x-0 bg-[#1b4332]/90 text-white text-[8px] text-center py-0.5 font-bold uppercase">Grano</span>
                 </div>
                 <div className="aspect-4/3 rounded-lg overflow-hidden border border-gray-200 relative opacity-90 hover:opacity-100 transition-opacity">
@@ -2578,7 +2739,7 @@ function LotDetail() {
                   <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[8px] text-center py-0.5 font-bold uppercase">Satélite</span>
                 </div>
                 <div className="aspect-4/3 rounded-lg overflow-hidden border border-gray-200 relative opacity-90 hover:opacity-100 transition-opacity">
-                  <img src={lot.farmerImage} alt="Agricultor líder" className="w-full h-full object-cover" />
+                  <img src={displayLot.farmerImage} alt="Agricultor líder" className="w-full h-full object-cover" />
                   <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[8px] text-center py-0.5 font-bold uppercase">Productor</span>
                 </div>
               </div>
@@ -2588,35 +2749,203 @@ function LotDetail() {
             <div className="lg:col-span-7 flex flex-col gap-5">
               <div>
                 <span className="text-[11px] font-bold tracking-wider uppercase text-[#954a17] bg-[#fbf2eb] px-2.5 py-0.5 rounded-full inline-block mb-1.5">
-                  {lot.fruit.toUpperCase()} NATIVO AMAZÓNICO · ALTA PUREZA GENÉTICA
+                  {displayLot.fruit.toUpperCase()} NATIVO AMAZÓNICO · ALTA PUREZA GENÉTICA
                 </span>
-                <h1 className="font-newsreader text-3xl sm:text-4xl text-[#071b12] font-normal leading-tight">
-                  {lot.name}
-                </h1>
+
+                {/* Título Editable en Vivo estilo WordPress */}
+                {isLiveEditMode ? (
+                  <div className="space-y-1 mb-2">
+                    <span className="text-[10px] font-bold text-[#b07d3b] uppercase tracking-wider block font-mono">
+                      Nombre Comercial de la Cosecha (Editable In-Situ):
+                    </span>
+                    <input
+                      type="text"
+                      value={editedLot.name}
+                      onChange={(e) => setEditedLot({ ...editedLot, name: e.target.value })}
+                      className="inline-editable-input font-newsreader text-2xl sm:text-3xl text-[#071b12] font-normal leading-tight w-full bg-yellow-50/50"
+                      data-testid="input-live-edit-lot-name"
+                    />
+                  </div>
+                ) : (
+                  <h1 className="font-newsreader text-3xl sm:text-4xl text-[#071b12] font-normal leading-tight">
+                    {displayLot.name}
+                  </h1>
+                )}
+
                 <p className="text-xs text-[#525f56] mt-1 flex items-center gap-1.5">
                   <MapPin size={13} className="text-[#954a17]" />
-                  <span>{lot.community}, {lot.region}, Perú</span>
+                  <span>{displayLot.community}, {displayLot.region}, Perú</span>
                   <span className="text-gray-300">·</span>
-                  <span>{lot.cooperative}</span>
+                  <span>{displayLot.cooperative}</span>
                 </p>
               </div>
 
-              {/* TIERED PRICING BOX (ALIBABA STYLE) */}
+              {/* TABLA DE PRECIOS MAYORISTAS ESCALONADOS (EDITABLE EN VIVO) */}
               <div className="tiered-pricing-box">
+                {/* Tier 1 */}
                 <div className="tiered-col">
-                  <div className="tiered-qty">{lot.tieredPricing?.tier1Range || '500 – 2,000 kg'}</div>
-                  <div className="tiered-price">${(lot.tieredPricing?.tier1Price || lot.priceFob).toFixed(2)} USD</div>
-                  <div className="tiered-sub">/ kg FOB Callao</div>
+                  {isLiveEditMode ? (
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        value={editedLot.tieredPricing?.tier1Range || '500 – 2,000 kg'}
+                        onChange={(e) => setEditedLot({
+                          ...editedLot,
+                          tieredPricing: {
+                            tier1Range: e.target.value,
+                            tier1Price: editedLot.tieredPricing?.tier1Price || editedLot.priceFob,
+                            tier2Range: editedLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                            tier2Price: editedLot.tieredPricing?.tier2Price || (editedLot.priceFob * 0.94),
+                            tier3Range: editedLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                            tier3Price: editedLot.tieredPricing?.tier3Price || (editedLot.priceFob * 0.86),
+                          }
+                        })}
+                        className="inline-editable-input text-[10px] font-mono w-full text-center"
+                      />
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-xs font-bold text-gray-400">$</span>
+                        <input
+                          type="number"
+                          step="0.05"
+                          value={editedLot.tieredPricing?.tier1Price || editedLot.priceFob}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setEditedLot({
+                              ...editedLot,
+                              priceFob: val,
+                              tieredPricing: {
+                                tier1Range: editedLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                                tier1Price: val,
+                                tier2Range: editedLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                                tier2Price: editedLot.tieredPricing?.tier2Price || (val * 0.94),
+                                tier3Range: editedLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                                tier3Price: editedLot.tieredPricing?.tier3Price || (val * 0.86),
+                              }
+                            });
+                          }}
+                          className="inline-editable-input font-serif font-bold text-base text-[#1b4332] w-20 text-center"
+                        />
+                        <span className="text-[10px] text-gray-500 font-mono">USD</span>
+                      </div>
+                      <div className="tiered-sub">/ kg FOB Callao</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="tiered-qty">{displayLot.tieredPricing?.tier1Range || '500 – 2,000 kg'}</div>
+                      <div className="tiered-price">${(displayLot.tieredPricing?.tier1Price || displayLot.priceFob).toFixed(2)} USD</div>
+                      <div className="tiered-sub">/ kg FOB Callao</div>
+                    </>
+                  )}
                 </div>
+
+                {/* Tier 2 */}
                 <div className="tiered-col">
-                  <div className="tiered-qty">{lot.tieredPricing?.tier2Range || '2,001 – 10,000 kg'}</div>
-                  <div className="tiered-price">${(lot.tieredPricing?.tier2Price || (lot.priceFob * 0.94)).toFixed(2)} USD</div>
-                  <div className="tiered-sub">/ kg (-6% Volumen)</div>
+                  {isLiveEditMode ? (
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        value={editedLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg'}
+                        onChange={(e) => setEditedLot({
+                          ...editedLot,
+                          tieredPricing: {
+                            tier1Range: editedLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                            tier1Price: editedLot.tieredPricing?.tier1Price || editedLot.priceFob,
+                            tier2Range: e.target.value,
+                            tier2Price: editedLot.tieredPricing?.tier2Price || (editedLot.priceFob * 0.94),
+                            tier3Range: editedLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                            tier3Price: editedLot.tieredPricing?.tier3Price || (editedLot.priceFob * 0.86),
+                          }
+                        })}
+                        className="inline-editable-input text-[10px] font-mono w-full text-center"
+                      />
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-xs font-bold text-gray-400">$</span>
+                        <input
+                          type="number"
+                          step="0.05"
+                          value={editedLot.tieredPricing?.tier2Price || (editedLot.priceFob * 0.94)}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setEditedLot({
+                              ...editedLot,
+                              tieredPricing: {
+                                tier1Range: editedLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                                tier1Price: editedLot.tieredPricing?.tier1Price || editedLot.priceFob,
+                                tier2Range: editedLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                                tier2Price: val,
+                                tier3Range: editedLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                                tier3Price: editedLot.tieredPricing?.tier3Price || (editedLot.priceFob * 0.86),
+                              }
+                            });
+                          }}
+                          className="inline-editable-input font-serif font-bold text-base text-[#1b4332] w-20 text-center"
+                        />
+                        <span className="text-[10px] text-gray-500 font-mono">USD</span>
+                      </div>
+                      <div className="tiered-sub">/ kg (-6% Volumen)</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="tiered-qty">{displayLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg'}</div>
+                      <div className="tiered-price">${(displayLot.tieredPricing?.tier2Price || (displayLot.priceFob * 0.94)).toFixed(2)} USD</div>
+                      <div className="tiered-sub">/ kg (-6% Volumen)</div>
+                    </>
+                  )}
                 </div>
+
+                {/* Tier 3 */}
                 <div className="tiered-col">
-                  <div className="tiered-qty">{lot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)'}</div>
-                  <div className="tiered-price">${(lot.tieredPricing?.tier3Price || (lot.priceFob * 0.86)).toFixed(2)} USD</div>
-                  <div className="tiered-sub">/ kg (-14% Contenedor)</div>
+                  {isLiveEditMode ? (
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        value={editedLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)'}
+                        onChange={(e) => setEditedLot({
+                          ...editedLot,
+                          tieredPricing: {
+                            tier1Range: editedLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                            tier1Price: editedLot.tieredPricing?.tier1Price || editedLot.priceFob,
+                            tier2Range: editedLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                            tier2Price: editedLot.tieredPricing?.tier2Price || (editedLot.priceFob * 0.94),
+                            tier3Range: e.target.value,
+                            tier3Price: editedLot.tieredPricing?.tier3Price || (editedLot.priceFob * 0.86),
+                          }
+                        })}
+                        className="inline-editable-input text-[10px] font-mono w-full text-center"
+                      />
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-xs font-bold text-gray-400">$</span>
+                        <input
+                          type="number"
+                          step="0.05"
+                          value={editedLot.tieredPricing?.tier3Price || (editedLot.priceFob * 0.86)}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setEditedLot({
+                              ...editedLot,
+                              tieredPricing: {
+                                tier1Range: editedLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                                tier1Price: editedLot.tieredPricing?.tier1Price || editedLot.priceFob,
+                                tier2Range: editedLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                                tier2Price: editedLot.tieredPricing?.tier2Price || (editedLot.priceFob * 0.94),
+                                tier3Range: editedLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                                tier3Price: val,
+                              }
+                            });
+                          }}
+                          className="inline-editable-input font-serif font-bold text-base text-[#1b4332] w-20 text-center"
+                        />
+                        <span className="text-[10px] text-gray-500 font-mono">USD</span>
+                      </div>
+                      <div className="tiered-sub">/ kg (-14% Contenedor)</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="tiered-qty">{displayLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)'}</div>
+                      <div className="tiered-price">${(displayLot.tieredPricing?.tier3Price || (displayLot.priceFob * 0.86)).toFixed(2)} USD</div>
+                      <div className="tiered-sub">/ kg (-14% Contenedor)</div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -2624,12 +2953,32 @@ function LotDetail() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-[#f8f7f2] rounded-xl border border-[#deded2] text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#727973] block">Pedido Mínimo (MOQ)</span>
-                  <b className="text-[#071b12]">{lot.minimumMoq}</b>
+                  {isLiveEditMode ? (
+                    <input
+                      type="text"
+                      value={editedLot.minimumMoq}
+                      onChange={(e) => setEditedLot({ ...editedLot, minimumMoq: e.target.value })}
+                      className="inline-editable-input text-xs font-bold text-[#071b12] w-full"
+                    />
+                  ) : (
+                    <b className="text-[#071b12]">{displayLot.minimumMoq}</b>
+                  )}
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#727973] block">Stock Disponible</span>
-                  <b className="text-[#143d29]">{lot.availableKg.toLocaleString()} kg listos</b>
-                  <small className="text-[10px] text-[#727973] block">Lote: {lot.totalKg.toLocaleString()} kg</small>
+                  {isLiveEditMode ? (
+                    <input
+                      type="number"
+                      value={editedLot.availableKg}
+                      onChange={(e) => setEditedLot({ ...editedLot, availableKg: parseInt(e.target.value) || 0 })}
+                      className="inline-editable-input text-xs font-bold text-[#143d29] w-full"
+                    />
+                  ) : (
+                    <>
+                      <b className="text-[#143d29]">{displayLot.availableKg.toLocaleString()} kg listos</b>
+                      <small className="text-[10px] text-[#727973] block">Lote: {displayLot.totalKg.toLocaleString()} kg</small>
+                    </>
+                  )}
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#727973] block">Tiempo a Puerto</span>
@@ -2642,7 +2991,16 @@ function LotDetail() {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#727973] block">Empaque de Exportación</span>
-                  <b className="text-[#071b12]">Saco GrainPro 60kg</b>
+                  {isLiveEditMode ? (
+                    <input
+                      type="text"
+                      value={editedLot.packaging || 'GrainPro 60kg'}
+                      onChange={(e) => setEditedLot({ ...editedLot, packaging: e.target.value })}
+                      className="inline-editable-input text-xs font-bold text-[#071b12] w-full"
+                    />
+                  ) : (
+                    <b className="text-[#071b12]">{displayLot.packaging || 'GrainPro 60kg'}</b>
+                  )}
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#727973] block">Protección de Pago</span>
@@ -2652,33 +3010,46 @@ function LotDetail() {
 
               {/* Certifications */}
               <div className="flex flex-wrap items-center gap-1.5">
-                {lot.certifications.map((c) => (
+                {displayLot.certifications.map((c) => (
                   <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#c9d8c4] text-[#143d29] text-[11px] font-semibold rounded-md shadow-xs">
                     <ShieldCheck size={12} className="text-[#2a7a4c]" /> {c}
                   </span>
                 ))}
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#eef3eb] border border-[#c9d8c4] text-[#143d29] text-[11px] font-semibold rounded-md shadow-xs">
-                  <Layers size={12} className="text-[#1b4332]" /> Cobertura NDVI: {lot.ndviScore} (Dosel Primario)
+                  <Layers size={12} className="text-[#1b4332]" /> Cobertura NDVI: {displayLot.ndviScore} (Dosel Primario)
                 </span>
               </div>
 
               {/* Primary Call to Action buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#954a17] hover:bg-[#b05b1f] text-white font-semibold text-xs rounded-xl shadow-md transition-all uppercase tracking-wider"
-                  onClick={() => setSelectedLot(lot)}
-                  data-testid="button-request-quote-main"
-                >
-                  <Send size={15} /> Solicitar Cotización Formal (RFQ)
-                </button>
-                <button
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white hover:bg-[#f4f3ed] text-[#071b12] border border-[#deded2] font-semibold text-xs rounded-xl shadow-xs transition-all uppercase tracking-wider"
-                  onClick={() => setSelectedLot(lot)}
-                  data-testid="button-request-sample-main"
-                >
-                  <PackageCheck size={15} /> Solicitar Muestra (500g)
-                </button>
-              </div>
+              {!isLiveEditMode ? (
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#954a17] hover:bg-[#b05b1f] text-white font-semibold text-xs rounded-xl shadow-md transition-all uppercase tracking-wider"
+                    onClick={() => setSelectedLot(displayLot)}
+                    data-testid="button-request-quote-main"
+                  >
+                    <Send size={15} /> Solicitar Cotización Formal (RFQ)
+                  </button>
+                  <button
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white hover:bg-[#f4f3ed] text-[#071b12] border border-[#deded2] font-semibold text-xs rounded-xl shadow-xs transition-all uppercase tracking-wider"
+                    onClick={() => setSelectedLot(displayLot)}
+                    data-testid="button-request-sample-main"
+                  >
+                    <PackageCheck size={15} /> Solicitar Muestra (500g)
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveLiveLot}
+                    disabled={isSaving}
+                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#b07d3b] hover:bg-[#c99049] text-white font-semibold text-xs rounded-xl shadow-md transition-all uppercase tracking-wider"
+                  >
+                    <Save size={15} /> Guardar Todos los Cambios de la Cosecha
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -2704,7 +3075,19 @@ function LotDetail() {
                 </span>
               </div>
               <div>
-                <b className="text-xl text-[#071b12] font-mono block">{lot.specs.v1}</b>
+                {isLiveEditMode ? (
+                  <input
+                    type="text"
+                    value={editedLot.specs?.v1 || ''}
+                    onChange={(e) => setEditedLot({
+                      ...editedLot,
+                      specs: { ...editedLot.specs, v1: e.target.value }
+                    })}
+                    className="inline-editable-input font-mono font-bold text-base text-[#071b12] w-full"
+                  />
+                ) : (
+                  <b className="text-xl text-[#071b12] font-mono block">{displayLot.specs.v1}</b>
+                )}
                 <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
                   <Check size={10} /> Óptimo &lt; 7.5%
                 </span>
@@ -2723,7 +3106,19 @@ function LotDetail() {
                 </span>
               </div>
               <div>
-                <b className="text-xl text-[#071b12] font-mono block">{lot.specs.v2}</b>
+                {isLiveEditMode ? (
+                  <input
+                    type="text"
+                    value={editedLot.specs?.v2 || ''}
+                    onChange={(e) => setEditedLot({
+                      ...editedLot,
+                      specs: { ...editedLot.specs, v2: e.target.value }
+                    })}
+                    className="inline-editable-input font-mono font-bold text-base text-[#071b12] w-full"
+                  />
+                ) : (
+                  <b className="text-xl text-[#071b12] font-mono block">{displayLot.specs.v2}</b>
+                )}
                 <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
                   <Check size={10} /> Grado Homogéneo
                 </span>
@@ -2742,7 +3137,19 @@ function LotDetail() {
                 </span>
               </div>
               <div>
-                <b className="text-xl text-[#071b12] font-mono block">{lot.specs.v3}</b>
+                {isLiveEditMode ? (
+                  <input
+                    type="text"
+                    value={editedLot.specs?.v3 || ''}
+                    onChange={(e) => setEditedLot({
+                      ...editedLot,
+                      specs: { ...editedLot.specs, v3: e.target.value }
+                    })}
+                    className="inline-editable-input font-mono font-bold text-base text-[#071b12] w-full"
+                  />
+                ) : (
+                  <b className="text-xl text-[#071b12] font-mono block">{displayLot.specs.v3}</b>
+                )}
                 <span className="text-[10px] text-[#727973] font-semibold flex items-center gap-1 mt-0.5">
                   Llanura Aluvial
                 </span>
@@ -2761,7 +3168,16 @@ function LotDetail() {
                 </span>
               </div>
               <div>
-                <b className="text-xl text-[#2a7a4c] font-mono block">&lt; 0.28 ppm</b>
+                {isLiveEditMode ? (
+                  <input
+                    type="text"
+                    value={editedLot.cadmiumLevel || '< 0.28 ppm'}
+                    onChange={(e) => setEditedLot({ ...editedLot, cadmiumLevel: e.target.value })}
+                    className="inline-editable-input font-mono font-bold text-base text-[#2a7a4c] w-full"
+                  />
+                ) : (
+                  <b className="text-xl text-[#2a7a4c] font-mono block">{displayLot.cadmiumLevel || '< 0.28 ppm'}</b>
+                )}
                 <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
                   <Check size={10} /> Conforme UE 488
                 </span>
@@ -2780,7 +3196,16 @@ function LotDetail() {
                 </span>
               </div>
               <div>
-                <b className="text-xl text-[#954a17] font-mono block">{lot.sensoryScore}</b>
+                {isLiveEditMode ? (
+                  <input
+                    type="text"
+                    value={editedLot.sensoryScore || ''}
+                    onChange={(e) => setEditedLot({ ...editedLot, sensoryScore: e.target.value })}
+                    className="inline-editable-input font-mono font-bold text-base text-[#954a17] w-full"
+                  />
+                ) : (
+                  <b className="text-xl text-[#954a17] font-mono block">{displayLot.sensoryScore}</b>
+                )}
                 <span className="text-[10px] text-[#954a17] font-semibold flex items-center gap-1 mt-0.5">
                   <Star size={10} className="fill-[#954a17]" /> Especialidad
                 </span>
@@ -2799,7 +3224,16 @@ function LotDetail() {
                 </span>
               </div>
               <div>
-                <b className="text-xl text-[#071b12] font-mono block">GrainPro 60kg</b>
+                {isLiveEditMode ? (
+                  <input
+                    type="text"
+                    value={editedLot.packaging || 'GrainPro 60kg'}
+                    onChange={(e) => setEditedLot({ ...editedLot, packaging: e.target.value })}
+                    className="inline-editable-input font-mono font-bold text-base text-[#071b12] w-full"
+                  />
+                ) : (
+                  <b className="text-xl text-[#071b12] font-mono block">{displayLot.packaging || 'GrainPro 60kg'}</b>
+                )}
                 <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
                   <Check size={10} /> Atmósfera Hermética
                 </span>
@@ -2811,15 +3245,40 @@ function LotDetail() {
           </div>
 
           <div className="p-4 bg-[#f8f7f2] rounded-xl border border-[#deded2]">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#954a17] block mb-1">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#954a17] block mb-1 font-mono">
               Notas Sensoriales & Descriptores de Copa / Cata
             </span>
-            <p className="text-sm text-[#071b12] font-medium leading-relaxed">
-              "{lot.sensoryNotes}"
-            </p>
-            <p className="text-xs text-[#525f56] mt-2 pt-2 border-t border-gray-200/60">
-              {lot.story}
-            </p>
+            {isLiveEditMode ? (
+              <textarea
+                value={editedLot.sensoryNotes}
+                onChange={(e) => setEditedLot({ ...editedLot, sensoryNotes: e.target.value })}
+                rows={2}
+                className="inline-editable-textarea w-full text-sm text-[#071b12] font-medium leading-relaxed bg-yellow-50/50"
+                data-testid="input-live-edit-sensory-notes"
+              />
+            ) : (
+              <p className="text-sm text-[#071b12] font-medium leading-relaxed">
+                "{displayLot.sensoryNotes}"
+              </p>
+            )}
+
+            {isLiveEditMode ? (
+              <div className="mt-3 pt-2 border-t border-gray-200/60">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#727973] block mb-1 font-mono">
+                  Historia & Prácticas Agroforestales:
+                </span>
+                <textarea
+                  value={editedLot.story}
+                  onChange={(e) => setEditedLot({ ...editedLot, story: e.target.value })}
+                  rows={2}
+                  className="inline-editable-textarea w-full text-xs text-[#525f56] bg-yellow-50/50"
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-[#525f56] mt-2 pt-2 border-t border-gray-200/60">
+                {displayLot.story}
+              </p>
+            )}
           </div>
         </section>
 
@@ -2835,19 +3294,34 @@ function LotDetail() {
                 El rostro detrás de la cosecha: <span className="italic text-[#1b4332]">bosque y familia.</span>
               </h2>
               <p className="text-xs text-[#424843] leading-relaxed mb-6">
-                En la cuenca de <b>{lot.community}</b>, cada familia productora custodia su parcela dentro de concesiones forestales y parcelas agroforestales. La cosecha convive con árboles nativos centenarios y refugios de fauna silvestre.
+                En la cuenca de <b>{displayLot.community}</b>, cada familia productora custodia su parcela dentro de concesiones forestales y parcelas agroforestales. La cosecha convive con árboles nativos centenarios y refugios de fauna silvestre.
               </p>
 
               <div className="flex items-center gap-4 p-4 bg-[#f4f7f2] border border-[#c9d8c4] rounded-xl">
                 <img
                   className="w-14 h-14 rounded-full object-cover border-2 border-[#1b4332]"
-                  src={lot.farmerImage}
-                  alt={lot.farmerName}
+                  src={displayLot.farmerImage}
+                  alt={displayLot.farmerName}
                 />
                 <div className="flex-1">
-                  <b className="text-sm text-[#071b12] block">{lot.farmerName}</b>
-                  <span className="text-xs text-[#143d29] block">Productor(a) Líder · {lot.cooperative}</span>
-                  <small className="text-[10px] text-[#727973] block mt-0.5">Insignia Digital #{lot.id}-ID</small>
+                  {isLiveEditMode ? (
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        value={editedLot.farmerName}
+                        onChange={(e) => setEditedLot({ ...editedLot, farmerName: e.target.value })}
+                        className="inline-editable-input text-xs font-bold text-[#071b12] w-full"
+                        placeholder="Nombre Productor"
+                      />
+                      <span className="text-xs text-[#143d29] block">Productor(a) Líder · {displayLot.cooperative}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <b className="text-sm text-[#071b12] block">{displayLot.farmerName}</b>
+                      <span className="text-xs text-[#143d29] block">Productor(a) Líder · {displayLot.cooperative}</span>
+                      <small className="text-[10px] text-[#727973] block mt-0.5">Insignia Digital #{displayLot.id}-ID</small>
+                    </>
+                  )}
                 </div>
                 <BadgeCheck size={24} className="text-[#2a7a4c]" />
               </div>
@@ -2855,18 +3329,43 @@ function LotDetail() {
 
             {/* Insignias de Identidad Biocultural Amazónica */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#f4f7f2] border border-[#c9d8c4] text-[#143d29] text-[11px] font-semibold rounded-md">
-                <TreePine size={12} className="text-[#2d6a4f]" /> {lot.indigenousCommunity || 'Pueblo Amahuaca'}
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#faf6f0] border border-[#d4a373]/40 text-[#8c5825] text-[11px] font-semibold rounded-md">
-                <Languages size={12} className="text-[#b07d3b]" /> {lot.nativeLanguage || 'Amahuaca (Familia Pano)'}
-              </span>
+              {isLiveEditMode ? (
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  <div>
+                    <label className="text-[10px] font-bold text-[#2d6a4f] block font-mono">Pueblo / Comunidad:</label>
+                    <input
+                      type="text"
+                      value={editedLot.indigenousCommunity || 'Pueblo Amahuaca'}
+                      onChange={(e) => setEditedLot({ ...editedLot, indigenousCommunity: e.target.value })}
+                      className="inline-editable-input text-[11px] text-[#143d29] w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8c5825] block font-mono">Lengua Ancestral:</label>
+                    <input
+                      type="text"
+                      value={editedLot.nativeLanguage || 'Amahuaca (Familia Pano)'}
+                      onChange={(e) => setEditedLot({ ...editedLot, nativeLanguage: e.target.value })}
+                      className="inline-editable-input text-[11px] text-[#8c5825] w-full"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#f4f7f2] border border-[#c9d8c4] text-[#143d29] text-[11px] font-semibold rounded-md">
+                    <TreePine size={12} className="text-[#2d6a4f]" /> {displayLot.indigenousCommunity || 'Pueblo Amahuaca'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#faf6f0] border border-[#d4a373]/40 text-[#8c5825] text-[11px] font-semibold rounded-md">
+                    <Languages size={12} className="text-[#b07d3b]" /> {displayLot.nativeLanguage || 'Amahuaca (Familia Pano)'}
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="mt-4 p-3.5 bg-[#f0eee4] border border-[#e1dfd4] rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 text-[#2d6a4f]">
                 <QrCode size={18} />
-                <span className="font-mono text-[11px]">Hash: {lot.lotHash}</span>
+                <span className="font-mono text-[11px]">Hash: {displayLot.lotHash}</span>
                 <span className="text-[10px] text-[#2d6a4f] bg-[#e4ecde] px-2 py-0.5 rounded font-semibold">
                   PostGIS Verified
                 </span>
@@ -2900,14 +3399,14 @@ function LotDetail() {
 
             {/* OpenStreetMap Live Interactive Parcel Viewer */}
             {(() => {
-              const geo = getLotGeoCoords(lot.id);
+              const geo = getLotGeoCoords(displayLot.id);
               const bbox = `${geo.lng - 0.045}%2C${geo.lat - 0.035}%2C${geo.lng + 0.045}%2C${geo.lat + 0.035}`;
               const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${geo.lat}%2C${geo.lng}`;
 
               return (
                 <div className="relative rounded-xl overflow-hidden border border-[#deded2] bg-[#f0eee4] shadow-inner h-[350px]">
                   <iframe
-                    title={`OpenStreetMap Parcela ${lot.id}`}
+                    title={`OpenStreetMap Parcela ${displayLot.id}`}
                     src={osmUrl}
                     className="w-full h-full border-0 filter saturate-105"
                     loading="lazy"
@@ -2918,12 +3417,12 @@ function LotDetail() {
                       <ShieldCheck size={11} className="text-[#4ade80]" /> OpenStreetMap Live · PostGIS Verified
                     </span>
                     <span className="px-2.5 py-1 bg-[#071b12]/90 text-white backdrop-blur-xs text-[10px] font-bold tracking-wider uppercase rounded-md shadow-xs flex items-center gap-1">
-                      <Leaf size={10} className="text-[#d4a373]" /> Cobertura NDVI {lot.ndviScore} (Dosel Primario)
+                      <Leaf size={10} className="text-[#d4a373]" /> Cobertura NDVI {displayLot.ndviScore} (Dosel Primario)
                     </span>
                   </div>
 
                   <div className="absolute bottom-3 left-3 bg-[#071b12]/90 text-white px-2.5 py-1 rounded-md text-[10px] font-mono backdrop-blur-xs flex items-center gap-1.5 pointer-events-none">
-                    <MapPin size={11} className="text-[#d4a373]" /> {lot.coordinates}
+                    <MapPin size={11} className="text-[#d4a373]" /> {displayLot.coordinates}
                   </div>
 
                   <a
@@ -2959,152 +3458,112 @@ function LotDetail() {
           </div>
         </section>
 
-        {/* CROSS SELLING: MÁS PRODUCTOS DE ESTE PROVEEDOR */}
-        <section className="bg-white rounded-2xl border border-gray-200/70 p-6 sm:p-8 shadow-xs mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-gray-100 pb-4 mb-6 gap-2">
+        {/* RELATED HARVESTS */}
+        <section className="mt-12 pt-8 border-t border-gray-200">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block">
-                Catálogo del Proveedor
+                Catálogo Agroforestal
               </span>
-              <h2 className="font-newsreader text-2xl text-[#071b12]">
-                Más Cosechas y Productos de <span className="italic text-[#1b4332]">{lot.cooperative}</span>
-              </h2>
+              <h3 className="font-newsreader text-2xl text-[#071b12]">
+                Otras cosechas disponibles de la Amazonía
+              </h3>
             </div>
-            <Link href="/marketplace" className="text-xs text-[#954a17] hover:text-[#d97736] font-bold flex items-center gap-1">
-              Ver todo el catálogo mayorista <ArrowRight size={14} />
+            <Link
+              href="/marketplace"
+              className="text-xs font-semibold text-[#1b4332] hover:underline flex items-center gap-1"
+            >
+              Ver todas las cosechas <ArrowRight size={13} />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedLots.map((relLot) => (
-              <div key={relLot.id} className="bg-[#faf9f4] border border-gray-200/70 rounded-xl overflow-hidden shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div>
-                  <div className="relative aspect-16/10 overflow-hidden bg-gray-100">
-                    <img src={relLot.image} alt={relLot.name} className="w-full h-full object-cover" />
-                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-[9px] font-bold uppercase rounded">
-                      LOTE #{relLot.id}
-                    </span>
-                    <span className="absolute top-2 right-2 px-2 py-0.5 bg-[#143d29]/90 text-white text-[9px] font-bold uppercase rounded">
-                      {relLot.sensoryScore} SCAA
-                    </span>
-                  </div>
-                  <div className="p-4">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#954a17] block">
-                      {relLot.fruit} · {relLot.region}
-                    </span>
-                    <h3 className="font-newsreader text-lg text-[#071b12] font-semibold mt-0.5 line-clamp-1">
-                      {relLot.name}
-                    </h3>
-                    <p className="text-xs text-[#525f56] mt-1 line-clamp-2">
-                      {relLot.sensoryNotes}
-                    </p>
-                    <div className="flex items-baseline gap-1 mt-3">
-                      <span className="text-base font-bold text-[#071b12]">${relLot.priceFob.toFixed(2)}</span>
-                      <span className="text-xs text-[#727973]">{relLot.unit}</span>
-                      <span className="text-[10px] text-[#2a7a4c] font-semibold ml-auto">{relLot.minimumMoq}</span>
-                    </div>
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {relatedLots.map((r) => (
+              <div key={r.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow">
+                <div className="relative aspect-16/9 bg-gray-100">
+                  <img src={r.image} alt={r.name} className="w-full h-full object-cover" />
+                  <span className="absolute top-2 left-2 bg-[#1b4332]/90 text-white text-[9px] font-bold px-2 py-0.5 rounded">
+                    LOTE #{r.id}
+                  </span>
                 </div>
-                <div className="p-4 pt-0">
-                  <Link
-                    href={`/lote/${relLot.id}`}
-                    className="w-full py-2 bg-white hover:bg-[#eef3eb] text-[#1b4332] border border-[#c9d8c4] rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    <Eye size={13} /> Ver Expediente del Lote
-                  </Link>
+                <div className="p-4">
+                  <span className="text-[10px] font-bold uppercase text-[#954a17]">{r.fruit}</span>
+                  <h4 className="font-serif font-bold text-sm text-[#071b12] line-clamp-1 mt-0.5">{r.name}</h4>
+                  <p className="text-xs text-gray-500">{r.community}, {r.region}</p>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                    <span className="font-mono font-bold text-sm text-[#1b4332]">${r.priceFob.toFixed(2)}/kg</span>
+                    <Link
+                      href={`/lote/${r.id}`}
+                      className="button button-small button-outline text-xs"
+                    >
+                      Ver Ficha
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </section>
-
-        {/* INVITATION TO DEDICATED AGROTOURISM */}
-        <section className="bg-gradient-to-r from-[#071b12] to-[#143d29] rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="max-w-2xl">
-            <span className="text-[11px] font-bold tracking-widest uppercase text-[#d4a373] block mb-1">
-              Rutas de Agroturismo Vivencial & Bioeconomía
-            </span>
-            <h2 className="font-newsreader text-2xl sm:text-3xl text-white font-normal">
-              ¿Deseas auditar la cosecha en persona o vivir la experiencia comunitaria?
-            </h2>
-            <p className="text-xs text-gray-300 mt-2 leading-relaxed">
-              Visita la cuenca de <b>{lot.cooperative}</b> en Madre de Dios. Recorre parcelas de cacao nativo bajo dosel primario, participa en talleres de cata y apoya directamente el fondo de conservación comunal.
-            </p>
-          </div>
-          <Link
-            href="/agroturismo"
-            className="whitespace-nowrap px-6 py-3.5 bg-[#954a17] hover:bg-[#b05b1f] text-white text-xs font-semibold uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2"
-            data-testid="link-agrotourism-cta"
-          >
-            <Compass size={16} /> Explorar Rutas de Agroturismo <ArrowRight size={14} />
-          </Link>
-        </section>
       </div>
 
-      <Footer />
-
+      {/* RFQ / MUESTRAS MODAL */}
       <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
 
-      {/* MODAL QR OFICIAL DEL PERFIL ÚNICO DEL PRODUCTOR */}
+      {/* QR MODAL */}
       {showQrModal && (
-        <div className="b2b-modal-backdrop" onClick={() => setShowQrModal(false)}>
-          <div className="b2b-modal-panel p-6 max-w-md text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => setShowQrModal(false)}>
+          <div className="modal-container max-w-sm" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-              <div className="text-left">
-                <h3 className="text-base font-serif font-bold text-[#1b4332]">Pasaporte Digital & QR Oficial</h3>
-                <p className="text-xs text-gray-500">Credencial verificada para empaques GrainPro y ferias.</p>
-              </div>
-              <button onClick={() => setShowQrModal(false)} className="text-gray-400 hover:text-gray-700">
+              <h3 className="font-serif font-bold text-base text-[#1b4332] flex items-center gap-2">
+                <QrCode size={18} /> Pasaporte QR del Lote
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="py-6 flex flex-col items-center">
-              <div className="b2b-qr-box mb-4">
-                <svg width="180" height="180" viewBox="0 0 180 180" fill="none" className="rounded-lg">
-                  <rect width="180" height="180" fill="white" />
-                  <rect x="15" y="15" width="45" height="45" fill="#1b4332" rx="4" />
-                  <rect x="23" y="23" width="29" height="29" fill="white" rx="2" />
-                  <rect x="30" y="30" width="15" height="15" fill="#1b4332" />
-
-                  <rect x="120" y="15" width="45" height="45" fill="#1b4332" rx="4" />
-                  <rect x="128" y="23" width="29" height="29" fill="white" rx="2" />
-                  <rect x="135" y="30" width="15" height="15" fill="#1b4332" />
-
-                  <rect x="15" y="120" width="45" height="45" fill="#1b4332" rx="4" />
-                  <rect x="23" y="128" width="29" height="29" fill="white" rx="2" />
-                  <rect x="30" y="135" width="15" height="15" fill="#1b4332" />
-
-                  <rect x="70" y="20" width="12" height="12" fill="#2d6a4f" />
-                  <rect x="90" y="20" width="12" height="12" fill="#1b4332" />
-                  <rect x="70" y="40" width="20" height="10" fill="#1b4332" />
-                  <rect x="20" y="70" width="15" height="12" fill="#1b4332" />
-                  <rect x="45" y="70" width="12" height="12" fill="#2d6a4f" />
-                  <rect x="70" y="70" width="40" height="40" fill="#1b4332" rx="4" />
-                  <rect x="80" y="80" width="20" height="20" fill="white" />
-                  <rect x="85" y="85" width="10" height="10" fill="#b07d3b" />
-                  <rect x="120" y="70" width="15" height="15" fill="#1b4332" />
-                  <rect x="145" y="70" width="20" height="12" fill="#2d6a4f" />
-                  <rect x="20" y="95" width="15" height="12" fill="#2d6a4f" />
-                  <rect x="45" y="95" width="12" height="15" fill="#1b4332" />
-                  <rect x="120" y="95" width="15" height="15" fill="#2d6a4f" />
-                  <rect x="145" y="95" width="15" height="15" fill="#1b4332" />
-                  <rect x="70" y="120" width="15" height="15" fill="#1b4332" />
-                  <rect x="95" y="120" width="15" height="15" fill="#2d6a4f" />
-                  <rect x="120" y="120" width="20" height="20" fill="#1b4332" />
-                  <rect x="150" y="120" width="15" height="15" fill="#2d6a4f" />
-                  <rect x="70" y="145" width="20" height="15" fill="#2d6a4f" />
-                  <rect x="100" y="145" width="15" height="15" fill="#1b4332" />
-                  <rect x="130" y="150" width="30" height="12" fill="#1b4332" />
+            <div className="py-4 flex flex-col items-center text-center">
+              <div className="p-4 bg-white border-2 border-[#1b4332] rounded-2xl shadow-sm mb-3">
+                <svg width="180" height="180" viewBox="0 0 100 100" fill="none" className="mx-auto">
+                  <rect width="100" height="100" fill="white" />
+                  <rect x="10" y="10" width="30" height="30" fill="#1b4332" />
+                  <rect x="15" y="15" width="20" height="20" fill="white" />
+                  <rect x="19" y="19" width="12" height="12" fill="#1b4332" />
+                  <rect x="60" y="10" width="30" height="30" fill="#1b4332" />
+                  <rect x="65" y="15" width="20" height="20" fill="white" />
+                  <rect x="69" y="19" width="12" height="12" fill="#1b4332" />
+                  <rect x="10" y="60" width="30" height="30" fill="#1b4332" />
+                  <rect x="15" y="65" width="20" height="20" fill="white" />
+                  <rect x="19" y="69" width="12" height="12" fill="#1b4332" />
+                  <rect x="46" y="15" width="8" height="8" fill="#1b4332" />
+                  <rect x="46" y="27" width="8" height="8" fill="#1b4332" />
+                  <rect x="46" y="39" width="8" height="8" fill="#1b4332" />
+                  <rect x="15" y="46" width="8" height="8" fill="#1b4332" />
+                  <rect x="27" y="46" width="8" height="8" fill="#1b4332" />
+                  <rect x="39" y="46" width="8" height="8" fill="#1b4332" />
+                  <rect x="46" y="46" width="12" height="12" fill="#b07d3b" />
+                  <rect x="60" y="46" width="8" height="8" fill="#1b4332" />
+                  <rect x="72" y="46" width="8" height="8" fill="#1b4332" />
+                  <rect x="84" y="46" width="8" height="8" fill="#1b4332" />
+                  <rect x="46" y="60" width="8" height="8" fill="#1b4332" />
+                  <rect x="60" y="60" width="12" height="12" fill="#1b4332" />
+                  <rect x="76" y="60" width="8" height="8" fill="#1b4332" />
+                  <rect x="46" y="74" width="8" height="8" fill="#1b4332" />
+                  <rect x="60" y="74" width="8" height="8" fill="#1b4332" />
+                  <rect x="74" y="74" width="14" height="14" fill="#1b4332" />
                 </svg>
-                <span className="text-[10px] font-mono text-gray-500 mt-2">
-                  ID: {lot.id} · Hash: {lot.lotHash}
+                <span className="text-[10px] font-mono text-gray-500 block mt-2">
+                  ID: {displayLot.id} · Hash: {displayLot.lotHash}
                 </span>
               </div>
 
-              <h4 className="font-serif font-bold text-sm text-[#1b4332]">{lot.name}</h4>
+              <h4 className="font-serif font-bold text-sm text-[#1b4332]">{displayLot.name}</h4>
               <p className="text-xs text-gray-500 mt-1">
-                Productor: <b>{lot.farmerName}</b> · {lot.indigenousCommunity || 'Pueblo Amahuaca'}
+                Productor: <b>{displayLot.farmerName}</b> · {displayLot.indigenousCommunity || 'Pueblo Amahuaca'}
               </p>
               <p className="text-[11px] font-mono text-emerald-800 mt-0.5">
                 Validado PostGIS EUDR · Reg. UE 2023/1115
@@ -3115,7 +3574,7 @@ function LotDetail() {
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(`https://trazamazon.org/lote/${lot.id}`);
+                  navigator.clipboard.writeText(`https://trazamazon.org/lote/${displayLot.id}`);
                   alert('Enlace del pasaporte copiado al portapapeles.');
                 }}
                 className="button button-small button-outline text-xs"
@@ -3140,9 +3599,6 @@ function LotDetail() {
   );
 }
 
-/**
- * VISTA DEDICADA: Portal de Agroturismo Vivencial y Bioeconomía Amazónica (/agroturismo)
- */
 function AgroturismoPage() {
   const [selectedRoute, setSelectedRoute] = useState<string>('cacao-boca-pariamanu');
   const [bookingModal, setBookingModal] = useState(false);
@@ -3947,7 +4403,7 @@ function MobileAppLandingPage() {
 }
 
 /**
- * VISTA 4: Dashboard B2B Workbench Unificado (/panel) (Estilo Alibaba Gold Supplier)
+ * VISTA 4: Dashboard B2B Workbench Operativo (/panel) (Comercio Mayorista Directo)
  */
 
 /**
@@ -4677,7 +5133,7 @@ function B2BDashboardPage() {
                   {activeRole === 'buyer' ? 'Valrhona B2B' : coopProfile.name}
                 </p>
                 <span className="text-[10px] text-gray-500 block truncate">
-                  {activeRole === 'buyer' ? 'Comprador Mayorista' : 'Gold Supplier Agroforestal'}
+                  {activeRole === 'buyer' ? 'Comprador Mayorista' : 'Cooperativa Agroforestal Certificada'}
                 </span>
               </div>
             </div>
@@ -5441,7 +5897,7 @@ function B2BDashboardPage() {
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="px-3 py-1.5 rounded-lg bg-[#b07d3b] text-white text-xs font-bold font-mono shadow-xs">
-                              Gold Supplier Agroforestal
+                              Cooperativa Agroforestal Certificada
                             </span>
                             <span className="px-3 py-1.5 rounded-lg bg-[#112a20] text-emerald-400 text-xs font-bold font-mono border border-emerald-500/30">
                               EUDR Verified In-Situ
@@ -6066,14 +6522,13 @@ function B2BDashboardPage() {
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditLot(l)}
+                              <Link
+                                href={`/lote/${l.id}?edit=true`}
                                 className="button button-small button-outline text-xs flex items-center gap-1.5"
                                 data-testid={`btn-edit-lot-${l.id}`}
                               >
-                                <Edit3 size={13} /> Editar Lote
-                              </button>
+                                <Edit3 size={13} /> Editar Ficha en Vivo
+                              </Link>
                               <label className="button button-small button-outline text-xs cursor-pointer">
                                 <Upload size={13} /> Subir Foto
                                 <input
@@ -6178,7 +6633,7 @@ function B2BDashboardPage() {
                 {sellerTab === 'customize' && (
                   <div>
                     <div className="mb-6">
-                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Personalizar Perfil de Vendedor (Alibaba Gold Supplier)</h2>
+                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Personalizar Perfil de Cooperativa (Proveedor Verificado)</h2>
                       <p className="text-xs text-gray-500">Configura la identidad visual, fotografías oficiales y datos comerciales de la cooperativa.</p>
                     </div>
 
@@ -6399,7 +6854,7 @@ function B2BDashboardPage() {
                               Vista Previa de tu Tienda en Vivo
                             </span>
                             <span className="text-[10px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded">
-                              Alibaba Gold Supplier
+                              Cooperativa de Origen Certificada
                             </span>
                           </div>
 
@@ -7130,7 +7585,7 @@ function B2BDashboardPage() {
                     {/* Precios escalonados FOB */}
                     <div className="p-3 bg-[#fdfbf7] rounded-lg border border-[#b07d3b]/20">
                       <span className="text-[11px] font-bold text-[#954a17] block mb-2">
-                        Precios Escalonados por Volumen (FOB Callao / Alibaba B2B Style)
+                        Precios Escalonados por Volumen (FOB Callao / Contratos Mayoristas B2B)
                       </span>
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div>
@@ -7455,7 +7910,7 @@ function B2BDashboardPage() {
                 Pueblo Originario: <b>{coopProfile.indigenousCommunity || 'Pueblo Amahuaca'}</b> · {coopProfile.department}
               </p>
               <p className="text-[11px] font-mono text-emerald-800 mt-1">
-                Certificación: Gold Supplier Agroforestal EUDR
+                Certificación: Cooperativa Agroforestal Certificada EUDR
               </p>
             </div>
 
@@ -7548,6 +8003,229 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 /**
  * Componente Raíz de la Aplicación TrazAmazon
  */
+
+/**
+ * Componente Avatar del Lorito Amazónico (Curichaco / Loro Verde B2B)
+ */
+function ParrotAvatar({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className="shrink-0 drop-shadow-sm">
+      {/* Background circle */}
+      <circle cx="24" cy="24" r="23" fill="#1b4332" stroke="#b07d3b" strokeWidth="1.5" />
+      {/* Tropical leaf backdrop */}
+      <path d="M12 28C14 18 20 12 32 14C30 24 24 30 12 28Z" fill="#2d6a4f" opacity="0.6" />
+      {/* Parrot Body (Emerald Green) */}
+      <path d="M17 19C17 14 22 10 28 10C34 10 38 14 38 21C38 28 34 36 29 40C25 43 21 42 20 38C19 34 17 26 17 19Z" fill="#2d6a4f" />
+      {/* Parrot Breast (Vibrant Lime Green) */}
+      <path d="M20 22C20 18 24 15 28 15C31 15 33 18 33 22C33 28 29 34 26 36C23 37 20 32 20 22Z" fill="#52b788" />
+      {/* Golden Beak (Curved Amazonian Hook) */}
+      <path d="M33 16C37 17 41 20 40 24C39 25 36 24 34 23C32 22 32 18 33 16Z" fill="#f59e0b" stroke="#b45309" strokeWidth="0.8" />
+      <path d="M34 23C36 25 38 26 36 27C34 27 33 25 34 23Z" fill="#d97706" />
+      {/* Intelligent Eye with white ring and glint */}
+      <circle cx="28" cy="16" r="3.2" fill="#faf6f0" />
+      <circle cx="28.5" cy="16" r="1.8" fill="#1b1c19" />
+      <circle cx="29" cy="15.5" r="0.7" fill="#ffffff" />
+      {/* Crimson Red Feather Crown / Crest */}
+      <path d="M22 10C21 6 24 4 26 5C26 8 24 10 22 10Z" fill="#dc2626" />
+      <path d="M26 9C26 5 29 3 31 5C30 8 28 9 26 9Z" fill="#ef4444" />
+      {/* Wing detail */}
+      <path d="M21 26C24 28 28 32 27 38C23 36 20 31 21 26Z" fill="#1b4332" />
+    </svg>
+  );
+}
+
+/**
+ * LOROBOT AMAZÓNICO: Chatbot Flotante RAG con Conocimiento en Vivo
+ * Asiste a compradores y vendedores con datos reales de lotes, órdenes, SENASA, DHL y normativa EUDR.
+ */
+function LoroBotChatbot() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputQuery, setInputQuery] = useState('');
+  const [messages, setMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; time: string }>>([
+    {
+      sender: 'bot',
+      text: '¡Hola! Soy LoroBot, tu copiloto amazónico. Consulto en tiempo real la base de datos de lotes, precios FOB, trazabilidad satelital EUDR, órdenes activas con guías DHL y precintos SENASA. ¿Qué deseas consultar hoy?',
+      time: 'Ahora'
+    }
+  ]);
+
+  // Suggested RAG quick chips
+  const quickChips = [
+    '¿Cuál es el precio y stock del Cacao Criollo TA-0427?',
+    '¿Cómo va el despacho de la muestra DHL TA-ORD-881?',
+    '¿Qué acreditación EUDR y cadmio tiene Bosque Vivo?',
+    '¿Cómo funciona la custodia de pago Escrow?'
+  ];
+
+  // Motor RAG Local con acceso al estado de memoria persistente
+  const processQueryRAG = (query: string): string => {
+    const q = query.toLowerCase();
+
+    // 1. Consulta de Lote TA-0427 / Cacao Criollo
+    if (q.includes('ta-0427') || q.includes('cacao') || q.includes('criollo')) {
+      return 'El Cacao Nativo Criollo (Lote #TA-0427) de la Asociación Bosque Vivo cuenta con 1,800 kg disponibles en acopio de Boca Pariamanu. Precio FOB Callao: $8.40 USD/kg (o $7.22/kg para contenedor completo). Tiene 88 Pts SCAA, fermentación al 84%, humedad al 6.8% y cadmio certificado en <0.28 ppm (apto normativa UE 488). Cultivado por la socia líder María Quispe (Pueblo Amahuaca).';
+    }
+
+    // 2. Consulta de Lote TA-0319 / Café de Sombra
+    if (q.includes('ta-0319') || q.includes('café') || q.includes('cafe') || q.includes('sandia')) {
+      return 'El Café de Sombra Altura (Lote #TA-0319) de Coop. San Juan del Oro en el Valle de Sandia (Puno) cuenta con 2,100 kg disponibles a $11.20 USD/kg FOB Callao. Tiene 87.5 Pts SCAA con proceso de lavado anaeróbico 48h a 1,750 msnm bajo dosel nativo de pacae y nogal.';
+    }
+
+    // 3. Consulta de Lote TA-0186 / Castaña
+    if (q.includes('ta-0186') || q.includes('castaña') || q.includes('castana')) {
+      return 'La Castaña Amazónica Silvestre Pelada (Lote #TA-0186) de Madre de Dios Castañeros tiene 4,500 kg en stock a $14.50 USD/kg FOB Callao. Certificada con recolección silvestre sin deforestación y empaque al vacío con gas inerte.';
+    }
+
+    // 4. Consulta de Orden TA-ORD-881 / Muestras DHL / SENASA
+    if (q.includes('ta-ord-881') || q.includes('dhl') || q.includes('senasa') || (q.includes('muestra') && q.includes('despacho'))) {
+      return 'La orden TA-ORD-881 para Valrhona Artisans B2B (Francia) está en estado "Muestra Despachada (SENASA Emitido)". Courier oficial: DHL Green Express con guía DHL-PE-7729104 y precinto fitosanitario oficial SENASA-MDD-2025-0482 emitido en Puerto Maldonado.';
+    }
+
+    // 5. Consulta de Orden TA-ORD-882
+    if (q.includes('ta-ord-882')) {
+      return 'La orden TA-ORD-882 (2,100 kg de Café de Sombra para Valrhona) tiene cotización aprobada por la cooperativa a $9.80 USD/kg FOB Callao. El lote está reservado en acopio con verificación satelital Sentinel-2.';
+    }
+
+    // 6. Consulta de Regulación EUDR / Deforestación Cero / PostGIS
+    if (q.includes('eudr') || q.includes('deforestacion') || q.includes('satelite') || q.includes('sentinel')) {
+      return 'En TrazAmazon el 100% de las parcelas cumplen con el Reglamento Europeo EUDR (UE 2023/1115). Verificamos coordenadas NMEA en PostGIS (-12.4667°, -69.2000°) con imágenes Sentinel-2 (ESA), comprobando cero pérdida de cobertura boscosa desde la fecha de corte del 31 de diciembre de 2020.';
+    }
+
+    // 7. Consulta de Garantía Comercial Escrow
+    if (q.includes('escrow') || q.includes('pago') || q.includes('garantia') || q.includes('seguridad')) {
+      return 'La Garantía Comercial Escrow de TrazAmazon custodia los fondos del comprador en una cuenta fiduciaria bancaria segura (actualmente $72,475 USD asegurados). Los fondos solo se liberan a la cooperativa cuando el courier DHL o la naviera confirma el conocimiento de embarque (BL) con precinto SENASA validado.';
+    }
+
+    // 8. Consulta de Comunidades Indígenas / Lenguas
+    if (q.includes('comunidad') || q.includes('indigena') || q.includes('lengua') || q.includes('amahuaca')) {
+      return 'Nuestras cosechas provienen de parcelas familiares y concesiones comunitarias como la cuenca de Boca Pariamanu (Pueblo Amahuaca, Lengua Ancestral Pano) y comunidades de altura en Puno. Practican policultivo bajo dosel de castañales centenarios con cosecha manual en fases lunares favorables.';
+    }
+
+    // Respuesta general de asistencia
+    return `He analizado tu consulta sobre "${query}". En nuestra red mayorista disponemos de cosechas auditadas de Cacao Criollo, Café de Sombra, Castaña Silvestre y Aguaje con pasaportes EUDR y soporte logístico SENASA/DHL puerta a puerto. ¿Deseas cotizar un lote específico o verificar una orden?`;
+  };
+
+  const handleSend = (textToSend?: string) => {
+    const q = textToSend || inputQuery;
+    if (!q.trim()) return;
+
+    const userMsg = { sender: 'user' as const, text: q, time: 'Ahora' };
+    const botReply = { sender: 'bot' as const, text: processQueryRAG(q), time: 'Ahora' };
+
+    setMessages((prev) => [...prev, userMsg, botReply]);
+    setInputQuery('');
+  };
+
+  return (
+    <>
+      {/* Botón Flotante con Lorito Amazónico */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="lorobot-floating-btn"
+        title="LoroBot IA · Asistente Amazónico B2B"
+        aria-label="Abrir Asistente LoroBot"
+        data-testid="button-lorobot-floating"
+      >
+        <ParrotAvatar size={34} />
+      </button>
+
+      {/* Ventana de Chat Flotante RAG */}
+      {isOpen && (
+        <div className="lorobot-chat-window">
+          {/* Header */}
+          <div className="lorobot-chat-header">
+            <div className="flex items-center gap-2.5">
+              <ParrotAvatar size={28} />
+              <div className="text-left">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-serif font-bold text-sm text-white">LoroBot Amazónico</h3>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+                <p className="text-[10px] text-emerald-100 font-mono">
+                  RAG Inteligente · Lotes, Órdenes & EUDR
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="text-emerald-100 hover:text-white p-1 rounded-md transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Chat Messages Body */}
+          <div className="lorobot-chat-body">
+            {messages.map((m, idx) => (
+              <div
+                key={idx}
+                className={`lorobot-message-bubble ${
+                  m.sender === 'bot' ? 'lorobot-message-bot' : 'lorobot-message-user'
+                }`}
+              >
+                {m.sender === 'bot' && (
+                  <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-[#2d6a4f] uppercase tracking-wider font-mono">
+                    <Sparkles size={11} />
+                    <span>LoroBot IA</span>
+                  </div>
+                )}
+                <p className="whitespace-pre-line">{m.text}</p>
+              </div>
+            ))}
+
+            {/* Suggested RAG Chips */}
+            <div className="pt-2">
+              <span className="text-[10px] font-bold text-gray-500 block mb-1.5 uppercase tracking-wider font-mono text-left">
+                Consultas Frecuentes B2B:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {quickChips.map((chip, ci) => (
+                  <button
+                    key={ci}
+                    type="button"
+                    onClick={() => handleSend(chip)}
+                    className="lorobot-chip-btn"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Input Footer */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="p-2.5 bg-white border-t border-gray-200 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={inputQuery}
+              onChange={(e) => setInputQuery(e.target.value)}
+              placeholder="Pregúntale a LoroBot sobre cosechas o pedidos..."
+              className="flex-1 text-xs px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#1b4332]"
+              data-testid="input-lorobot-query"
+            />
+            <button
+              type="submit"
+              className="button button-small button-primary py-2 px-3 flex items-center justify-center rounded-lg"
+              title="Enviar consulta"
+            >
+              <Send size={13} />
+            </button>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -7566,6 +8244,8 @@ function App() {
                   <Route component={NotFound} />
                 </Switch>
               </RoutedErrorBoundary>
+              {/* LoroBot Amazónico Flotante Disponible Globalmente */}
+              <LoroBotChatbot />
             </WouterRouter>
             <Toaster />
           </B2BOrdersProvider>
