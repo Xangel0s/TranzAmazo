@@ -6,12 +6,12 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from 'wouter';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Building2, Check, CheckCircle2, Droplets, FlaskConical, LogOut, Mountain, Thermometer,
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Boxes, Building2, Check, CheckCircle2, Database, DollarSign, Droplets, FlaskConical, LogOut, Mountain, Thermometer,
   ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
   Coffee, Compass, Download, ExternalLink, Eye, FileCheck, FileText, Filter, Globe2, Handshake, Heart, Info,
   Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck,
-  Plus, QrCode, RefreshCw, Search, Send, ShieldCheck, Ship, SlidersHorizontal,
-  Smartphone, Sprout, Star, TreePine, Truck, Upload, User, Users, Wifi, WifiOff, X
+  Play, Plus, QrCode, RefreshCw, Search, Send, ShieldCheck, Ship, ShoppingCart, SlidersHorizontal,
+  Smartphone, Sprout, Star, Store, TreePine, TrendingUp, Truck, Upload, User, Users, Wifi, WifiOff, X
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -396,6 +396,184 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 /**
+ * Estructura de Cotización / Pedido B2B Sincronizado (Alibaba Trade Assurance)
+ */
+export interface B2BQuoteOrder {
+  id: string;
+  lotId: string;
+  lotName: string;
+  fruit: string;
+  cooperative: string;
+  buyerName: string;
+  buyerOrg: string;
+  buyerCountry: string;
+  type: 'sample' | 'commercial_rfq';
+  requestedKg: number;
+  pricePerKg: number;
+  totalUsd: number;
+  status: 'submitted' | 'quoted' | 'sample_dispatched' | 'contract_locked';
+  createdAt: string;
+  trackingCode?: string;
+  courier?: string;
+  senasaGuide?: string;
+  escrowStatus: 'pending' | 'funded' | 'released';
+  notes?: string;
+}
+
+export const initialB2BOrders: B2BQuoteOrder[] = [
+  {
+    id: 'TA-ORD-881',
+    lotId: 'TA-0427',
+    lotName: 'Cacao Nativo Criollo de Aroma Fino',
+    fruit: 'Cacao',
+    cooperative: 'Asociación Bosque Vivo',
+    buyerName: 'Alexandre Bonnat',
+    buyerOrg: 'Valrhona Artisans B2B',
+    buyerCountry: 'Francia',
+    type: 'sample',
+    requestedKg: 0.5,
+    pricePerKg: 8.40,
+    totalUsd: 0,
+    status: 'sample_dispatched',
+    createdAt: '16 May 2025 · 14:20',
+    trackingCode: 'DHL-PE-7729104',
+    courier: 'DHL Green Express',
+    senasaGuide: 'SENASA-MDD-2025-0482',
+    escrowStatus: 'funded',
+    notes: 'Muestra técnica oficial de 500g en bolsa termosellada con precinto fitosanitario.'
+  },
+  {
+    id: 'TA-ORD-882',
+    lotId: 'TA-0319',
+    lotName: 'Café de Sombra Altura · Lavado Anaeróbico',
+    fruit: 'Café',
+    cooperative: 'Coop. Agraria Cafetalera San Juan del Oro',
+    buyerName: 'Alexandre Bonnat',
+    buyerOrg: 'Valrhona Artisans B2B',
+    buyerCountry: 'Francia',
+    type: 'commercial_rfq',
+    requestedKg: 2100,
+    pricePerKg: 11.20,
+    totalUsd: 23520,
+    status: 'submitted',
+    createdAt: '17 May 2025 · 09:45',
+    escrowStatus: 'pending',
+    notes: 'Requerimiento de 35 sacos GrainPro de 60kg para tostado de edición limitada.'
+  },
+  {
+    id: 'TA-ORD-883',
+    lotId: 'TA-0201',
+    lotName: 'Aceite Virgen de Aguaje (Mauritia flexuosa)',
+    fruit: 'Aguaje',
+    cooperative: 'Asociación de Mujeres Defensoras del Aguajal',
+    buyerName: 'Camille Laurent',
+    buyerOrg: 'Laboratoires Botaniques Paris',
+    buyerCountry: 'Francia',
+    type: 'sample',
+    requestedKg: 0.25,
+    pricePerKg: 28.00,
+    totalUsd: 0,
+    status: 'quoted',
+    createdAt: '18 May 2025 · 11:15',
+    trackingCode: 'FEDEX-EXP-44021',
+    courier: 'FedEx Priority',
+    senasaGuide: 'SENASA-UCA-2025-0193',
+    escrowStatus: 'pending',
+    notes: 'Proforma aprobada con especificación de acidez libre < 0.8% y alto beta-caroteno.'
+  },
+  {
+    id: 'TA-ORD-884',
+    lotId: 'TA-0186',
+    lotName: 'Castaña Amazónica Silvestre Pelada',
+    fruit: 'Castaña',
+    cooperative: 'Madre de Dios Castañeros',
+    buyerName: 'Jens Hoffmann',
+    buyerOrg: 'BioNuts GmbH',
+    buyerCountry: 'Alemania',
+    type: 'commercial_rfq',
+    requestedKg: 4500,
+    pricePerKg: 6.75,
+    totalUsd: 30375,
+    status: 'contract_locked',
+    createdAt: '14 May 2025 · 16:30',
+    trackingCode: 'HAPAG-LLOYD-FCL-4412',
+    courier: 'Naviera Hapag-Lloyd (FCL 20ft)',
+    senasaGuide: 'SENASA-CALLAO-EXP-9921',
+    escrowStatus: 'funded',
+    notes: 'Contrato comercial formalizado bajo Incoterm FOB Callao. Depósito en custodia Escrow al 100%.'
+  }
+];
+
+interface B2BOrdersContextType {
+  orders: B2BQuoteOrder[];
+  addOrder: (order: Omit<B2BQuoteOrder, 'id' | 'createdAt'>) => B2BQuoteOrder;
+  updateOrderStatus: (id: string, newStatus: B2BQuoteOrder['status'], extra?: Partial<B2BQuoteOrder>) => void;
+}
+
+const B2BOrdersContext = createContext<B2BOrdersContextType>({
+  orders: initialB2BOrders,
+  addOrder: () => initialB2BOrders[0],
+  updateOrderStatus: () => {},
+});
+
+export function useB2BOrders() {
+  return useContext(B2BOrdersContext);
+}
+
+export function B2BOrdersProvider({ children }: { children: ReactNode }) {
+  const [orders, setOrders] = useState<B2BQuoteOrder[]>(() => {
+    try {
+      const saved = localStorage.getItem('trazamazon-b2b-orders');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return initialB2BOrders;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('trazamazon-b2b-orders', JSON.stringify(orders));
+    } catch {}
+  }, [orders]);
+
+  const addOrder = (orderData: Omit<B2BQuoteOrder, 'id' | 'createdAt'>): B2BQuoteOrder => {
+    const newId = `TA-ORD-${Math.floor(885 + Math.random() * 100)}`;
+    const now = new Date();
+    const formattedDate = `${now.getDate()} ${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'][now.getMonth()]} ${now.getFullYear()} · ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newOrder: B2BQuoteOrder = {
+      ...orderData,
+      id: newId,
+      createdAt: formattedDate,
+    };
+    setOrders(prev => [newOrder, ...prev]);
+    return newOrder;
+  };
+
+  const updateOrderStatus = (id: string, newStatus: B2BQuoteOrder['status'], extra?: Partial<B2BQuoteOrder>) => {
+    setOrders(prev =>
+      prev.map(ord => {
+        if (ord.id === id) {
+          return {
+            ...ord,
+            status: newStatus,
+            ...extra,
+          };
+        }
+        return ord;
+      })
+    );
+  };
+
+  return (
+    <B2BOrdersContext.Provider value={{ orders, addOrder, updateOrderStatus }}>
+      {children}
+    </B2BOrdersContext.Provider>
+  );
+}
+
+/**
  * Modal de Autenticación y Registro con Doble Rol
  */
 function AuthModal() {
@@ -754,7 +932,7 @@ function Header({ active }: { active?: string }) {
           {currentUser ? (
             <div className="flex items-center gap-2">
               <Link
-                href="/app"
+                href="/panel"
                 className="button button-dark button-small"
                 data-testid="button-my-panel"
               >
@@ -864,6 +1042,8 @@ function SampleQuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: 
   const [buyerEmail, setBuyerEmail] = useState('');
   const [company, setCompany] = useState('');
   const [requestType, setRequestType] = useState('Muestra Técnica (500g)');
+  const { addOrder } = useB2BOrders();
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     setSent(false);
@@ -873,6 +1053,26 @@ function SampleQuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: 
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (lot) {
+      const isSample = requestType.includes('Muestra');
+      const requestedKg = isSample ? 0.5 : requestType.includes('Pallet') ? 1000 : 10000;
+      addOrder({
+        lotId: lot.id,
+        lotName: lot.name,
+        fruit: lot.fruit,
+        cooperative: lot.cooperative,
+        buyerName: buyerName || currentUser?.name || 'Comprador B2B',
+        buyerOrg: company || currentUser?.organization || 'Empresa Importadora B2B',
+        buyerCountry: currentUser?.countryOrRegion || 'Internacional',
+        type: isSample ? 'sample' : 'commercial_rfq',
+        requestedKg,
+        pricePerKg: lot.priceFob,
+        totalUsd: isSample ? 0 : requestedKg * lot.priceFob,
+        status: 'submitted',
+        escrowStatus: 'pending',
+        notes: `${requestType}. Contacto: ${buyerEmail || currentUser?.email || 'compras@valrhona-artisans.com'}`,
+      });
+    }
     setSent(true);
   };
 
@@ -893,9 +1093,14 @@ function SampleQuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: 
               Hemos enviado tu solicitud para el lote <b>{lot.id} · {lot.name}</b> a la cooperativa <b>{lot.cooperative}</b>.
               El envío se gestionará vía DHL Green Express con certificado fitosanitario SENASA emitido.
             </p>
-            <button className="button button-dark" onClick={onClose} data-testid="button-done-quote">
-              Volver al Catálogo <ArrowRight size={16} />
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+              <button className="button button-dark" onClick={onClose} data-testid="button-done-quote">
+                Volver al Catálogo <ArrowRight size={16} />
+              </button>
+              <Link href="/panel" className="button button-earth" onClick={onClose} data-testid="button-goto-panel">
+                Ver en Mi Panel B2B <ExternalLink size={16} />
+              </Link>
+            </div>
           </div>
         ) : (
           <>
@@ -2863,504 +3068,990 @@ function AgroturismoPage() {
 }
 
 /**
- * VISTA 3: App Móvil de Campo Offline-First
+ * VISTA 3: Landing Page Oficial de la App Móvil de Campo Offline-First (/app)
  */
-function FieldApp() {
-  const [online, setOnline] = useState(true);
-  const [records, setRecords] = useState<LocalHarvestRecord[]>(loadLocalRecords);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+function MobileAppLandingPage() {
+  const [selectedFaq, setSelectedFaq] = useState<number | null>(null);
 
-  // Estados del Formulario Modal de Cosecha
-  const [formFruit, setFormFruit] = useState<'Cacao' | 'Café' | 'Castaña' | 'Aguaje' | 'Copoazú'>('Cacao');
-  const [formWeight, setFormWeight] = useState('');
-  const [formCoords, setFormCoords] = useState('');
-  const [formPhoto, setFormPhoto] = useState('');
-
-  // Estados de Sincronización
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(0);
-  const [syncMessage, setSyncMessage] = useState('');
-
-  // Persistir en almacenamiento local cada vez que cambien los registros
-  useEffect(() => {
-    localStorage.setItem('trazamazon-harvest-records', JSON.stringify(records));
-  }, [records]);
-
-  const pendingCount = records.filter((r) => r.syncStatus === 'pending').length;
-  const syncStateLabel = !online
-    ? 'Modo Sin Señal (Parcela)'
-    : pendingCount > 0
-    ? `${pendingCount} ${pendingCount === 1 ? 'lote pendiente' : 'lotes pendientes'} en caché local`
-    : 'Sincronizado con Supabase';
-
-  /**
-   * Simula la auto-captura de coordenadas GPS de alta precisión en parcela
-   */
-  const handleCaptureGPS = () => {
-    const simulatedLat = (-12.4667 + (Math.random() - 0.5) * 0.005).toFixed(4);
-    const simulatedLng = (-69.2000 + (Math.random() - 0.5) * 0.005).toFixed(4);
-    setFormCoords(`${simulatedLat}°, ${simulatedLng}° (±3.2m GPS)`);
-  };
-
-  /**
-   * Manejador de subida de fotografía de cosecha
-   */
-  const handlePhotoUpload = (e: FormEvent<HTMLInputElement>) => {
-    const file = (e.currentTarget as HTMLInputElement).files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setFormPhoto(String(reader.result));
-      reader.readAsDataURL(file);
-    }
-  };
-
-  /**
-   * Guarda un nuevo registro en la base de datos local (Dexie.js / IndexedDB)
-   */
-  const handleSaveHarvest = (e: FormEvent) => {
-    e.preventDefault();
-    if (!formWeight || Number(formWeight) <= 0) return;
-
-    const newRecord: LocalHarvestRecord = {
-      id: `HR-${Date.now().toString().slice(-6)}`,
-      fruit: formFruit,
-      estimatedKg: Number(formWeight),
-      coordinates: formCoords || "12° 28' S, 69° 12' W (±3.2m GPS)",
-      photoPreview: formPhoto,
-      createdAt: new Date().toISOString(),
-      syncStatus: 'pending'
-    };
-
-    setRecords((prev) => [newRecord, ...prev]);
-
-    setFormWeight('');
-    setFormCoords('');
-    setFormPhoto('');
-    setIsModalOpen(false);
-
-    setSyncMessage(`Lote ${newRecord.id} guardado en caché local.`);
-    window.setTimeout(() => setSyncMessage(''), 3500);
-  };
-
-  /**
-   * Simula la sincronización hacia Supabase Cloud PostgreSQL + PostGIS
-   */
-  const handleSyncToSupabase = () => {
-    if (!online) {
-      setSyncMessage('Conecta el dispositivo a internet para sincronizar con la nube.');
-      window.setTimeout(() => setSyncMessage(''), 3500);
-      return;
-    }
-
-    if (pendingCount === 0) {
-      setSyncMessage('Todos los lotes locales ya están sincronizados en Supabase.');
-      window.setTimeout(() => setSyncMessage(''), 3500);
-      return;
-    }
-
-    setIsSyncing(true);
-    setSyncProgress(25);
-
-    const step1 = setTimeout(() => setSyncProgress(65), 500);
-    const step2 = setTimeout(() => setSyncProgress(90), 1000);
-    const step3 = setTimeout(() => {
-      setSyncProgress(100);
-      setIsSyncing(false);
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.syncStatus === 'pending'
-            ? { ...r, syncStatus: 'synced', cloudHash: `0x${Math.random().toString(16).slice(2, 10)}` }
-            : r
-        )
-      );
-      setSyncMessage(`Sincronización exitosa: ${pendingCount} lotes subidos a Supabase Cloud con hash QR.`);
-      window.setTimeout(() => {
-        setSyncMessage('');
-        setSyncProgress(0);
-      }, 4500);
-    }, 1500);
-
-    return () => {
-      clearTimeout(step1);
-      clearTimeout(step2);
-      clearTimeout(step3);
-    };
+  const toggleFaq = (idx: number) => {
+    setSelectedFaq(selectedFaq === idx ? null : idx);
   };
 
   return (
-    <main className="field-page grain">
+    <main className="grain min-h-screen flex flex-col bg-[#faf6f0]">
+      <Header active="app" />
 
-      {/* Topbar de la App de Campo */}
-      <div className="field-topbar">
-        <Brand />
-        <Link href="/" className="field-exit" data-testid="link-field-home">
-          <ArrowLeft size={15} /> Salir al Portal Web
-        </Link>
-      </div>
-
-      <div className="field-layout">
-        {/* Panel Explicativo a la izquierda en pantallas grandes */}
-        <div className="field-explainer">
-          <p className="eyebrow">
-            <span className="eyebrow-line" /> MÓDULO OFFLINE-FIRST (PWA / DEXIE.JS)
-          </p>
-          <h1 className="serif">
-            Registra cosechas<br />
-            <em>en plena selva.</em>
+      {/* Hero Section de la App */}
+      <section className="app-landing-hero">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8f1ec] border border-[#2d6a4f]/20 text-[#1b4332] text-xs font-semibold uppercase tracking-wider mb-6">
+            <Smartphone size={14} className="text-[#2d6a4f]" />
+            Tecnología de Campo · Offline-First PWA & Android
+          </div>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif text-[#1b4332] tracking-tight max-w-4xl mx-auto leading-[1.15]">
+            La trazabilidad que empodera a la Amazonía <em>desde la parcela.</em>
           </h1>
-          <p>
-            Diseñada especialmente para los pequeños agricultores y comités de trazabilidad de las cooperativas.
-            Permite la toma de datos biométricos, peso y coordenadas satelitales en zonas con nula cobertura celular.
+          <p className="mt-6 text-lg sm:text-xl text-[#424843] max-w-3xl mx-auto leading-relaxed font-sans">
+            Diseñada para técnicos y productores que operan en el corazón de la selva sin cobertura celular.
+            Georreferenciación satelital submétrica NMEA, integración con balanzas Bluetooth y custodia comunitaria sin intermediarios.
           </p>
 
-          <div className="field-benefits">
-            <div>
-              <span>
-                <CloudOff size={17} />
-              </span>
-              <div>
-                <b>Almacenamiento Local Transaccional</b>
-                <small>IndexedDB / Dexie.js garantiza que ningún dato se pierda en campo.</small>
+          {/* Badges de Descarga Oficial */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4" id="descarga">
+            <a
+              href="#google-play"
+              className="app-badge-google-play"
+              onClick={(e) => {
+                e.preventDefault();
+                alert('TrazAmazon Campo v2.4 está disponible en Google Play Store para cooperativas registradas.');
+              }}
+              data-testid="badge-google-play"
+            >
+              <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#34a853]" fill="currentColor">
+                <path d="M3.609 1.814L13.792 12 3.61 22.186A2.298 2.298 0 0 1 3 20.573V3.427c0-.624.23-1.198.609-1.613zm11.24 11.24l2.25 2.25-9.845 5.684 7.595-7.934zm2.25-2.108l-2.25 2.25-7.595-7.934 9.845 5.684zm1.054 1.054l2.84 1.64a1.2 1.2 0 0 1 0 2.08l-2.84 1.64-2.108-2.68 2.108-2.68z" />
+              </svg>
+              <div className="text-left">
+                <span className="text-[10px] uppercase tracking-wider block text-gray-400 font-sans leading-none">Disponible en</span>
+                <span className="text-sm font-semibold tracking-wide font-sans text-white leading-tight">Google Play</span>
+              </div>
+            </a>
+
+            <a
+              href="#apk-direct"
+              className="app-badge-apk"
+              onClick={(e) => {
+                e.preventDefault();
+                alert('Iniciando descarga directa de instalador: TrazAmazon-Campo-v2.4-arm64.apk (18.4 MB)');
+              }}
+              data-testid="badge-apk-download"
+            >
+              <Download size={20} className="text-[#faf6f0]" />
+              <div className="text-left">
+                <span className="text-[10px] uppercase tracking-wider block text-[#faf6f0]/70 font-sans leading-none">Descarga Directa</span>
+                <span className="text-sm font-semibold tracking-wide font-sans text-white leading-tight">APK v2.4 (Campo)</span>
+              </div>
+              <span className="text-[10px] bg-[#112a20] text-[#b07d3b] font-mono px-2 py-0.5 rounded font-bold ml-1">18.4 MB</span>
+            </a>
+
+            <Link href="/marketplace" className="app-badge-pwa" data-testid="badge-pwa-launch">
+              <Smartphone size={18} className="text-[#1b4332]" />
+              <div className="text-left">
+                <span className="text-[10px] uppercase tracking-wider block text-[#555555] font-sans leading-none">Acceso Inmediato</span>
+                <span className="text-sm font-semibold tracking-wide font-sans text-[#1b4332] leading-tight">PWA Web Responsive</span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Mockups de Smartphone Fotorrealistas en Campo */}
+          <div className="app-mockups-showcase">
+            {/* Teléfono 1: Captura de Cosecha en Parcela */}
+            <div className="field-phone-frame">
+              <div className="field-phone-notch" />
+              <div className="field-phone-screen">
+                <div className="phone-screen-status-bar">
+                  <span className="font-semibold">09:41</span>
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <span className="inline-flex items-center gap-0.5 text-[#2d6a4f] font-mono">
+                      <LocateFixed size={11} /> 5 Satélites
+                    </span>
+                    <span className="text-red-700 font-medium">Sin Señal</span>
+                    <span className="font-mono">98%</span>
+                  </div>
+                </div>
+
+                <div className="phone-screen-body">
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">TrazAmazon Campo</p>
+                      <h4 className="text-xs font-serif font-bold text-[#1b4332]">Registro de Cosecha #042</h4>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#e8f1ec] text-[#1b4332] border border-[#2d6a4f]/20">
+                      Dexie.js
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-gray-200 shadow-sm text-left">
+                    <p className="text-[10px] text-gray-500 font-sans">Socia Productora</p>
+                    <p className="text-xs font-bold text-[#1b4332]">María Quispe Huamán</p>
+                    <p className="text-[10px] text-gray-600">Parcela #14 · Boca Pariamanu</p>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-gray-200 shadow-sm text-left">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-gray-500 font-sans">Coordenadas GNSS</span>
+                      <span className="text-[9px] bg-green-100 text-green-800 font-mono px-1 rounded">±1.8m NMEA</span>
+                    </div>
+                    <p className="text-[11px] font-mono font-bold text-[#1b4332] mt-0.5">12° 28&apos; 14&quot; S, 69° 12&apos; 08&quot; W</p>
+                    <p className="text-[9px] text-gray-500 mt-0.5">Altitud: 260 msnm · Dosel Primario</p>
+                  </div>
+
+                  <div className="bg-[#f4efe6] p-2.5 rounded-xl border border-[#b07d3b]/30 text-left">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-[#956528] uppercase">Balanza Bluetooth</span>
+                      <span className="text-[9px] bg-[#956528] text-white px-1.5 py-0.2 rounded font-mono">Conectada</span>
+                    </div>
+                    <p className="text-base font-bold text-[#1b4332] mt-0.5 font-mono">48.50 kg Netos</p>
+                    <p className="text-[9px] text-gray-600">Tara: 0.50 kg · Saco GrainPro #09</p>
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-[#eef7f2] border border-[#2d6a4f]/20 text-[10px] text-[#1b4332] text-left flex items-center gap-1.5">
+                    <ShieldCheck size={14} className="text-[#2d6a4f] shrink-0" />
+                    <span>Polígono Libre de Deforestación Sentinel-2 (EUDR)</span>
+                  </div>
+
+                  <button className="w-full mt-auto py-2 bg-[#1b4332] text-white text-xs font-semibold rounded-lg shadow flex items-center justify-center gap-1.5">
+                    <Check size={13} /> Guardado en Memoria Local
+                  </button>
+                </div>
               </div>
             </div>
-            <div>
-              <span>
-                <LocateFixed size={17} />
-              </span>
-              <div>
-                <b>Captura Automática de GPS</b>
-                <small>Georreferenciación precisa del polígono de cosecha.</small>
-              </div>
-            </div>
-            <div>
-              <span>
-                <CloudUpload size={17} />
-              </span>
-              <div>
-                <b>Sincronización P2P o Nube</b>
-                <small>Volcado automático a Supabase PostGIS al detectar conectividad.</small>
+
+            {/* Teléfono 2: Traspaso P2P & Centro de Beneficio */}
+            <div className="field-phone-frame hidden sm:block">
+              <div className="field-phone-notch" />
+              <div className="field-phone-screen">
+                <div className="phone-screen-status-bar">
+                  <span className="font-semibold">15:30</span>
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <span className="inline-flex items-center gap-0.5 text-[#b07d3b] font-mono">
+                      <QrCode size={11} /> P2P Activo
+                    </span>
+                    <span className="text-gray-500">Offline</span>
+                    <span className="font-mono">84%</span>
+                  </div>
+                </div>
+
+                <div className="phone-screen-body">
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Custodia P2P</p>
+                      <h4 className="text-xs font-serif font-bold text-[#1b4332]">Traspaso de Cosecha</h4>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#fbf0df] text-[#956528] border border-[#b07d3b]/20">
+                      Sin Internet
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center">
+                    <div className="p-3 bg-[#faf6f0] rounded-lg border border-gray-200">
+                      <QrCode size={90} className="text-[#1b4332]" />
+                    </div>
+                    <p className="text-[10px] font-mono text-gray-500 mt-2">Hash: 0x7e4a18f9c21b38e0</p>
+                    <p className="text-[11px] font-bold text-[#1b4332] mt-0.5">Lote TA-0427-01 · 48.5 kg</p>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-gray-200 shadow-sm text-left">
+                    <p className="text-[10px] text-gray-500 font-sans">Receptor / Centro de Beneficio</p>
+                    <p className="text-xs font-bold text-[#1b4332]">Centro de Acopio Boca Pariamanu</p>
+                    <p className="text-[10px] text-gray-600">Receptor: Santos Huamán (Responsable)</p>
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-[#f0f9ff] border border-blue-200 text-[10px] text-blue-900 text-left flex items-center gap-1.5">
+                    <CloudUpload size={14} className="text-blue-700 shrink-0" />
+                    <span>Cola de sincronización: 3 lotes listos para WiFi comunitaria</span>
+                  </div>
+
+                  <button className="w-full mt-auto py-2 bg-[#2d6a4f] text-white text-xs font-semibold rounded-lg shadow flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={13} /> Custodia Transferida
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="field-local-note">
-            <Info size={16} />
-            <span>
-              <b>Modo Prototipo Interactivo:</b>
-              <br />
-              Puedes alternar el interruptor de red para simular el paso de estar sin cobertura en la selva a recuperar señal en la sede comunal.
-            </span>
+      {/* Métricas de Campo */}
+      <section className="py-12 bg-white border-y border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <p className="text-3xl sm:text-4xl font-serif font-bold text-[#1b4332]">0%</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 uppercase tracking-wider">Datos Celulares Requeridos</p>
+          </div>
+          <div>
+            <p className="text-3xl sm:text-4xl font-serif font-bold text-[#1b4332]">±1.8m</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 uppercase tracking-wider">Precisión GPS NMEA</p>
+          </div>
+          <div>
+            <p className="text-3xl sm:text-4xl font-serif font-bold text-[#1b4332]">100%</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 uppercase tracking-wider">Cumplimiento Reg. EUDR</p>
+          </div>
+          <div>
+            <p className="text-3xl sm:text-4xl font-serif font-bold text-[#1b4332]">&lt; 2s</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 uppercase tracking-wider">Captura Balanza BLE</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Los 4 Pilares Tecnológicos Offline-First */}
+      <section className="py-16 px-4 max-w-6xl mx-auto">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <p className="text-xs uppercase tracking-widest text-[#2d6a4f] font-semibold">Arquitectura de Alta Resiliencia</p>
+          <h2 className="text-3xl sm:text-4xl font-serif text-[#1b4332] mt-2">
+            Ingeniería de software diseñada para la selva profunda
+          </h2>
+          <p className="text-gray-600 mt-4 leading-relaxed font-sans">
+            La mayoría de las plataformas digitales asumen conectividad permanente. TrazAmazon fue construida bajo la filosofía de que la desconexión es la norma en la Amazonía.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="app-pillar-card">
+            <div className="w-12 h-12 rounded-xl bg-[#e8f1ec] text-[#1b4332] flex items-center justify-center mb-4">
+              <Database size={24} />
+            </div>
+            <h3 className="text-xl font-serif font-bold text-[#1b4332]">1. IndexedDB & Dexie.js Transaccional</h3>
+            <p className="text-gray-600 mt-2 font-sans text-sm leading-relaxed">
+              Base de datos relacional y transaccional alojada en el chip de memoria del teléfono. Cada pesaje, fotografía y firma comunitaria se sella criptográficamente en local. Cero pérdida de datos ante agotamiento repentino de batería.
+            </p>
+          </div>
+
+          <div className="app-pillar-card">
+            <div className="w-12 h-12 rounded-xl bg-[#e8f1ec] text-[#1b4332] flex items-center justify-center mb-4">
+              <LocateFixed size={24} />
+            </div>
+            <h3 className="text-xl font-serif font-bold text-[#1b4332]">2. GPS Satelital NMEA Submétrico</h3>
+            <p className="text-gray-600 mt-2 font-sans text-sm leading-relaxed">
+              Conexión directa con constelaciones GNSS (GPS, GLONASS y Galileo) sin triangulación por antenas celulares. Genera polígonos cerrados de parcelas que satisfacen de manera estricta el estándar de debida diligencia de la Unión Europea (EUDR).
+            </p>
+          </div>
+
+          <div className="app-pillar-card">
+            <div className="w-12 h-12 rounded-xl bg-[#e8f1ec] text-[#1b4332] flex items-center justify-center mb-4">
+              <QrCode size={24} />
+            </div>
+            <h3 className="text-xl font-serif font-bold text-[#1b4332]">3. Traspaso P2P por Códigos QR Dinámicos</h3>
+            <p className="text-gray-600 mt-2 font-sans text-sm leading-relaxed">
+              Permite transferir la custodia del lote entre el productor en su parcela y el camión o bote recolector sin necesidad de conexión a internet. Los teléfonos se sincronizan de dispositivo a dispositivo mediante código óptico de alta densidad.
+            </p>
+          </div>
+
+          <div className="app-pillar-card">
+            <div className="w-12 h-12 rounded-xl bg-[#e8f1ec] text-[#1b4332] flex items-center justify-center mb-4">
+              <CloudUpload size={24} />
+            </div>
+            <h3 className="text-xl font-serif font-bold text-[#1b4332]">4. Sincronización Automática Cloud PostGIS</h3>
+            <p className="text-gray-600 mt-2 font-sans text-sm leading-relaxed">
+              Tan pronto el técnico o dirigente llega a una base con antena comunitaria o punto de acceso Starlink, el motor de sincronización resuelve conflictos y sube la cosecha a la base geoespacial Supabase PostGIS para su exhibición inmediata en el marketplace.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Compatibilidad de Hardware y Balanzas de Campo */}
+      <section className="py-16 bg-[#f4efe6] border-t border-gray-200">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <p className="text-xs uppercase tracking-widest text-[#956528] font-semibold">Equipamiento Técnico Homologado</p>
+            <h2 className="text-3xl font-serif text-[#1b4332] mt-2">Compatibilidad de balanzas y dispositivos</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-left">
+              <span className="text-xs font-bold font-mono text-[#956528] uppercase tracking-wider">Sensores de Peso</span>
+              <h4 className="text-lg font-bold font-serif text-[#1b4332] mt-1">Balanzas Bluetooth BLE</h4>
+              <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+                Homologada con balanzas ganaderas y de sacos Torrey BLE, Ohaus Defender y Kern industrial. Transmisión instantánea de tara y peso neto sin errores manuales.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-left">
+              <span className="text-xs font-bold font-mono text-[#2d6a4f] uppercase tracking-wider">Dispositivos Móviles</span>
+              <h4 className="text-lg font-bold font-serif text-[#1b4332] mt-1">Android 8.0+ & Rugerizados</h4>
+              <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+                Compatible con smartphones convencionales y equipos rugerizados de alta resistencia (Blackview, CAT, Ulefone IP68/IP69K) para trabajo bajo lluvias torrenciales y lodo.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-left">
+              <span className="text-xs font-bold font-mono text-[#1b4332] uppercase tracking-wider">Energía en Parcela</span>
+              <h4 className="text-lg font-bold font-serif text-[#1b4332] mt-1">Kit Solar de Expedición</h4>
+              <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+                Operación asistida con panel solar plegable de 20W y banco de carga de 20,000 mAh que permite autonomía continua de hasta 14 días en áreas sin red eléctrica.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Manual Operativo de Campo & FAQ */}
+      <section className="py-16 px-4 max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <p className="text-xs uppercase tracking-widest text-[#2d6a4f] font-semibold">Preguntas Frecuentes</p>
+          <h2 className="text-3xl font-serif text-[#1b4332] mt-2">Manual operativo de campo</h2>
+        </div>
+
+        <div className="space-y-4">
+          {[
+            {
+              q: '¿Qué sucede si el teléfono se apaga durante el pesaje en la parcela?',
+              a: 'TrazAmazon utiliza Dexie.js con almacenamiento síncrono en IndexedDB. Cada dígito y coordenada se guarda al instante. Al encender el equipo, la sesión de cosecha se recupera exactamente en el mismo estado sin pérdida de información.'
+            },
+            {
+              q: '¿Cómo valida SENASA y la Unión Europea las coordenadas capturadas?',
+              a: 'El aplicativo captura la trama NMEA sin procesar del sensor satelital, incluyendo número de satélites en vista y dilución de precisión (DOP). Esta metadata se adjunta al pasaporte digital inmutable del lote para auditoría satelital.'
+            },
+            {
+              q: '¿Se necesita registrar una cuenta antes de salir al campo?',
+              a: 'Sí. El técnico o socio debe iniciar sesión al menos una vez con cobertura (en la sede de la cooperativa o centro poblado) para descargar el padrón de productores y catálogo de parcelas de su comunidad.'
+            },
+            {
+              q: '¿Cómo se descarga e instala el APK directo si no hay acceso a Google Play?',
+              a: 'El archivo APK de 18.4 MB puede compartirse de celular a celular vía Bluetooth o cable USB entre brigadas. Una vez instalado, opera de manera 100% autónoma.'
+            }
+          ].map((item, idx) => (
+            <div key={idx} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+              <button
+                onClick={() => toggleFaq(idx)}
+                className="w-full text-left px-5 py-4 flex items-center justify-between font-serif font-bold text-[#1b4332] hover:bg-[#faf6f0] transition-colors"
+              >
+                <span>{item.q}</span>
+                <ChevronDown size={18} className={`transition-transform text-gray-500 ${selectedFaq === idx ? 'rotate-180' : ''}`} />
+              </button>
+              {selectedFaq === idx && (
+                <div className="px-5 pb-5 text-sm text-[#424843] font-sans leading-relaxed border-t border-gray-100 pt-3">
+                  {item.a}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Banner de Conversión Final */}
+      <section className="py-14 bg-[#1b4332] text-white text-center px-4">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-serif">¿Deseas negociar lotes o gestionar tus compras?</h2>
+          <p className="text-gray-300 mt-3 max-w-xl mx-auto text-base">
+            Accede al panel mayorista B2B o explora los lotes de cacao, café, castaña y aguaje auditados en tiempo real.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Link href="/panel" className="button button-earth" data-testid="button-cta-panel">
+              Acceder a Mi Panel B2B <ArrowRight size={16} />
+            </Link>
+            <Link href="/marketplace" className="button button-light" data-testid="button-cta-market">
+              Explorar Catálogo Mayorista
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </main>
+  );
+}
+
+/**
+ * VISTA 4: Dashboard B2B Unificado (/panel) (Alibaba Trade Assurance Workbench)
+ */
+function B2BDashboardPage() {
+  const { currentUser } = useAuth();
+  const { orders, updateOrderStatus } = useB2BOrders();
+  const [activeRole, setActiveRole] = useState<'buyer' | 'seller'>(currentUser?.role || 'buyer');
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+
+  const showNotice = (msg: string) => {
+    setActionNotice(msg);
+    setTimeout(() => setActionNotice(null), 4000);
+  };
+
+  // KPIs Comprador
+  const buyerOrders = orders.filter((o) => o.buyerOrg.toLowerCase().includes('valrhona') || activeRole === 'buyer');
+  const activeSamplesCount = buyerOrders.filter((o) => o.type === 'sample').length;
+  const contractedLotsCount = buyerOrders.filter((o) => o.type === 'commercial_rfq').length;
+  const totalVolumeKg = buyerOrders.reduce((acc, curr) => acc + curr.requestedKg, 0);
+  const totalEscrowUsd = buyerOrders
+    .filter((o) => o.escrowStatus === 'funded')
+    .reduce((acc, curr) => acc + curr.totalUsd, 42100);
+
+  // KPIs Vendedor (Cooperativa Bosque Vivo)
+  const pendingRfqsCount = orders.filter((o) => o.status === 'submitted').length;
+  const totalLotsPublished = initialLots.length;
+  const totalStockKg = initialLots.reduce((acc, curr) => acc + curr.availableKg, 0);
+
+  return (
+    <main className="grain min-h-screen flex flex-col bg-[#fbf9f5]">
+      <Header active="panel" />
+
+      <div className="b2b-panel-container">
+        {/* Breadcrumb */}
+        <div className="text-xs uppercase tracking-wider text-[#555555] font-sans mb-4 flex items-center gap-2">
+          <Link href="/" className="hover:text-[#1b4332] font-semibold">Inicio</Link>
+          <span>/</span>
+          <span className="text-[#1b4332] font-bold">Mi Panel B2B</span>
+          <span>/</span>
+          <span className="text-gray-500">{activeRole === 'buyer' ? 'Portal de Compras' : 'Gestión Cooperativa'}</span>
+        </div>
+
+        {/* Notificación de Acción Transaccional */}
+        {actionNotice && (
+          <div className="mb-6 p-4 rounded-xl bg-[#eef7f2] border border-[#2d6a4f]/30 text-[#1b4332] flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 size={20} className="text-[#2d6a4f]" />
+              <span className="text-sm font-semibold">{actionNotice}</span>
+            </div>
+            <button onClick={() => setActionNotice(null)} className="text-gray-400 hover:text-gray-700">
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Barra de Cambio de Perspectiva Bilateral (Estilo Alibaba) */}
+        <div className="b2b-role-switcher-bar">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#1b4332] text-[#faf6f0] flex items-center justify-center font-bold text-sm">
+              {activeRole === 'buyer' ? 'V' : 'B'}
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-sans">Sesión Activa:</p>
+              <h3 className="text-sm font-bold text-[#1b4332]">
+                {activeRole === 'buyer' ? 'Valrhona Artisans B2B (Francia)' : 'Asociación Bosque Vivo (Madre de Dios)'}
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-sans hidden sm:inline">Perspectiva:</span>
+            <div className="b2b-role-pill-group">
+              <button
+                onClick={() => setActiveRole('buyer')}
+                className={`b2b-role-btn ${activeRole === 'buyer' ? 'active' : ''}`}
+                data-testid="role-switch-buyer"
+              >
+                <ShoppingCart size={15} />
+                <span>Comprador B2B</span>
+              </button>
+              <button
+                onClick={() => setActiveRole('seller')}
+                className={`b2b-role-btn ${activeRole === 'seller' ? 'active' : ''}`}
+                data-testid="role-switch-seller"
+              >
+                <Store size={15} />
+                <span>Cooperativa Productora</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Marco de Teléfono Smartphone Estilizado */}
-        <div className="phone-shell">
-          <div className="phone-frame">
-            <div className="phone-island" />
-            <div className="phone-screen">
-              {/* Barra de Estado del Smartphone */}
-              <div className="phone-status">
-                <span>09:41</span>
-                <span className="phone-status-icons">
-                  <span />
-                  {online ? <Wifi size={13} className="text-[#2d6a4f]" /> : <WifiOff size={13} className="text-amber-600" />}
-                  <span className="battery">
-                    <i />
-                  </span>
-                </span>
-              </div>
-
-              {/* Cabecera del Productor */}
-              <div className="field-app-header">
+        {/* =========================================================================
+            PERSPECTIVA: COMPRADOR CORPORATIVO (Valrhona Artisans B2B)
+            ========================================================================= */}
+        {activeRole === 'buyer' && (
+          <div>
+            {/* Banner Institucional del Comprador */}
+            <div className="b2b-banner">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <span className="app-kicker">TRAZAMAZON CAMPO V2.4</span>
-                  <h2>Buen día, María</h2>
-                  <p>Asociación Bosque Vivo · Pariamanu</p>
+                  <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
+                    Comprador Corporativo Verificado · Tax ID: FR-84920192
+                  </span>
+                  <h1 className="text-2xl sm:text-3xl font-serif">Valrhona Artisans B2B</h1>
+                  <p className="text-sm text-gray-200 mt-1">
+                    Responsable de Abastecimiento: Alexandre Bonnat · Tain-l&apos;Hermitage, Francia
+                  </p>
                 </div>
-                <div className="profile-dot">MQ</div>
-              </div>
-
-              {/* Tarjeta de Perfil del Productor con Sello Digital */}
-              <section className="producer-profile" aria-label="Perfil de la productora">
-                <img src={`${import.meta.env.BASE_URL}producer-maria-illustration.jpg`} alt="Productora María Quispe" />
-                <div className="producer-profile-copy">
-                  <span className="app-kicker">SOCIA CERTIFICADA</span>
-                  <b>María Quispe Huamán</b>
-                  <small>Parcela Shihuahuaco #12 · 4.8 ha</small>
-                </div>
-                <div className="producer-seal">
-                  <ShieldCheck size={14} />
-                  <span>Cero Deforestación TrazAmazon Verificada</span>
-                </div>
-              </section>
-
-              {/* Fila de Estado de Conexión con Toggle Manual */}
-              <div className="field-status-row">
-                <div
-                  className={`record-status ${!online ? 'status-offline' : pendingCount > 0 ? 'status-pending' : 'status-synced'}`}
-                  role="status"
-                  data-testid="status-local-sync"
-                >
-                  <span className="record-status-icon">
-                    {!online ? <WifiOff size={15} /> : pendingCount > 0 ? <CloudOff size={15} /> : <CheckCircle2 size={15} />}
-                  </span>
-                  <span>
-                    <b>{syncStateLabel}</b>
-                    <small>
-                      {!online
-                        ? 'Los nuevos registros se guardarán en caché local.'
-                        : pendingCount > 0
-                        ? 'Listo para subir a Supabase Cloud.'
-                        : 'Base de datos sincronizada.'}
-                    </small>
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setOnline(!online)}
-                  className={`connectivity ${online ? 'is-online' : 'is-offline'}`}
-                  aria-pressed={online}
-                  aria-label="Alternar modo de conexión"
-                  data-testid="toggle-connectivity"
-                >
-                  <span className="connectivity-icon">
-                    {online ? <Wifi size={13} /> : <WifiOff size={13} />}
-                  </span>
-                  <span>
-                    <b>{online ? 'Con señal' : 'Sin señal'}</b>
-                    <small>Toggle test</small>
-                  </span>
-                  <span className={`switch ${online ? 'switch-on' : ''}`}>
-                    <i />
-                  </span>
-                </button>
-              </div>
-
-              {/* Botón Principal: NUEVO REGISTRO EN PARCELA */}
-              <button
-                className="btn-new-harvest"
-                onClick={() => setIsModalOpen(true)}
-                data-testid="button-new-harvest"
-              >
-                <Plus size={16} /> Nuevo Registro en Parcela
-              </button>
-
-              {/* Barra de Progreso de Sincronización */}
-              {isSyncing && (
-                <div className="sync-progress-container">
-                  <div className="flex justify-between items-center text-[8px] text-[#2d6a4f] font-semibold">
-                    <span className="flex items-center gap-1">
-                      <RefreshCw size={10} className="animate-spin" /> Subiendo a Supabase PostGIS...
-                    </span>
-                    <span>{syncProgress}%</span>
-                  </div>
-                  <div className="sync-progress-bar-bg">
-                    <div className="sync-progress-bar-fill" style={{ width: `${syncProgress}%` }} />
+                <div className="flex items-center gap-2 bg-white/10 px-4 py-2.5 rounded-xl border border-white/20">
+                  <ShieldCheck size={24} className="text-[#b07d3b]" />
+                  <div className="text-left text-xs">
+                    <p className="font-bold text-white">Garantía Trade Assurance</p>
+                    <p className="text-gray-300">Fondos protegidos en Escrow bancario</p>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Mensajes de Notificación */}
-              {syncMessage && (
-                <div className="sync-message" role="status" data-testid="status-sync-message">
-                  <CheckCircle2 size={14} className="text-[#2d6a4f]" />
-                  <span>{syncMessage}</span>
+            {/* KPIs del Comprador */}
+            <div className="b2b-kpis-grid">
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Muestras Activas</span>
+                  <PackageCheck size={18} className="text-[#2d6a4f]" />
                 </div>
-              )}
-
-              {/* Cabecera de Lotes Locales en Caché */}
-              <div className="recent-head">
-                <div>
-                  <p className="app-kicker">MEMORIA LOCAL (INDEXEDDB)</p>
-                  <h3>
-                    Lotes en Caché <span>{records.length}</span>
-                  </h3>
-                </div>
-                <button
-                  className="sync-button"
-                  onClick={handleSyncToSupabase}
-                  disabled={isSyncing}
-                  data-testid="button-sync-records"
-                >
-                  <CloudUpload size={13} /> Sincronizar {pendingCount > 0 && <span>{pendingCount}</span>}
-                </button>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{activeSamplesCount}</p>
+                <p className="text-xs text-gray-500 mt-1">En tránsito courier puerta a puerto</p>
               </div>
 
-              {/* Lista Interactiva de Lotes Locales */}
-              {records.length > 0 ? (
-                <div className="record-list">
-                  {records.map((r) => (
-                    <div className="record-row" key={r.id} data-testid={`record-harvest-${r.id}`}>
-                      <div className="record-fruit-mark">
-                        {r.fruit === 'Café' ? <Coffee size={15} /> : <Leaf size={15} />}
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes Contratados</span>
+                  <Handshake size={18} className="text-[#b07d3b]" />
+                </div>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{contractedLotsCount}</p>
+                <p className="text-xs text-gray-500 mt-1">Acuerdos comerciales firmados</p>
+              </div>
+
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Volumen Comprometido</span>
+                  <Layers size={18} className="text-[#1b4332]" />
+                </div>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalVolumeKg.toLocaleString()} kg</p>
+                <p className="text-xs text-gray-500 mt-1">Cacao criollo y café especial</p>
+              </div>
+
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Protección Escrow</span>
+                  <ShieldCheck size={18} className="text-[#2d6a4f]" />
+                </div>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">${totalEscrowUsd.toLocaleString()} USD</p>
+                <p className="text-xs text-gray-500 mt-1">Depósitos asegurados en custodia</p>
+              </div>
+            </div>
+
+            {/* Sección: Mis Cotizaciones (RFQs) y Pedidos de Muestras */}
+            <div className="mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-serif font-bold text-[#1b4332]">Mis Cotizaciones (RFQs) y Pedidos de Muestras</h2>
+                <Link href="/marketplace" className="text-xs font-semibold text-[#2d6a4f] hover:underline flex items-center gap-1">
+                  Solicitar Más Cosechas <ArrowRight size={14} />
+                </Link>
+              </div>
+
+              <div className="space-y-4">
+                {orders.map((ord) => {
+                  const isSample = ord.type === 'sample';
+                  return (
+                    <div key={ord.id} className="b2b-order-card" data-testid={`buyer-order-${ord.id}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                              {ord.id}
+                            </span>
+                            <h4 className="font-serif font-bold text-[#1b4332] text-base">{ord.lotName}</h4>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Lote <b>{ord.lotId}</b> · Cooperativa: <b>{ord.cooperative}</b> · Solicitado: {ord.createdAt}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {ord.status === 'submitted' && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                              Enviada · Esperando Proforma
+                            </span>
+                          )}
+                          {ord.status === 'quoted' && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                              Proforma Aprobada · Por Despachar
+                            </span>
+                          )}
+                          {ord.status === 'sample_dispatched' && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              Muestra Despachada (En Tránsito)
+                            </span>
+                          )}
+                          {ord.status === 'contract_locked' && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+                              Contrato Asegurado (Escrow 100%)
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="record-content">
-                        <b>
-                          {r.estimatedKg} kg · {r.fruit}
-                        </b>
-                        <small>
-                          {new Date(r.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })} · {r.coordinates}
-                        </small>
+
+                      {/* Stepper de Seguimiento Logístico */}
+                      <div className="b2b-stepper">
+                        <div className="b2b-step-item completed">
+                          <div className="b2b-step-circle">
+                            <Check size={14} />
+                          </div>
+                          <span className="text-[11px] font-semibold text-gray-700">1. Solicitud Recibida</span>
+                        </div>
+
+                        <div className={`b2b-step-item ${ord.status !== 'submitted' ? 'completed' : 'active'}`}>
+                          <div className="b2b-step-circle">
+                            {ord.status !== 'submitted' ? <Check size={14} /> : '2'}
+                          </div>
+                          <span className="text-[11px] font-semibold text-gray-700">2. Proforma / Aprobación</span>
+                        </div>
+
+                        <div className={`b2b-step-item ${ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? 'completed' : ''}`}>
+                          <div className="b2b-step-circle">
+                            {ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? <Check size={14} /> : '3'}
+                          </div>
+                          <span className="text-[11px] font-semibold text-gray-700">3. Despacho Courier SENASA</span>
+                        </div>
+
+                        <div className={`b2b-step-item ${ord.status === 'contract_locked' ? 'completed' : ''}`}>
+                          <div className="b2b-step-circle">
+                            {ord.status === 'contract_locked' ? <Check size={14} /> : '4'}
+                          </div>
+                          <span className="text-[11px] font-semibold text-gray-700">4. Arribo a Puerto / Escrow</span>
+                        </div>
                       </div>
-                      <span
-                        className={`record-sync ${r.syncStatus === 'synced' ? 'record-synced' : ''}`}
-                        title={r.syncStatus === 'synced' ? `Sincronizado: ${r.cloudHash || 'OK'}` : 'Pendiente en caché local'}
-                      >
-                        {r.syncStatus === 'synced' ? <Check size={12} /> : <Clock size={12} />}
-                      </span>
+
+                      {/* Caja de Logística e Información */}
+                      <div className="b2b-logistics-box">
+                        <div className="text-xs text-gray-700">
+                          <span className="font-semibold block text-[#1b4332]">Requerimiento:</span>
+                          {isSample ? 'Muestra técnica oficial de 500g' : `Lote comercial: ${ord.requestedKg.toLocaleString()} kg`} · Valor: ${ord.totalUsd.toLocaleString()} USD
+                        </div>
+
+                        {ord.trackingCode && (
+                          <div className="text-xs text-gray-700 font-mono">
+                            <span className="text-gray-500 block font-sans">Guía Courier / Naviera:</span>
+                            <span className="font-bold text-[#1b4332]">{ord.courier}: {ord.trackingCode}</span>
+                          </div>
+                        )}
+
+                        {ord.senasaGuide && (
+                          <div className="text-xs text-gray-700 font-mono">
+                            <span className="text-gray-500 block font-sans">Precinto Fitosanitario:</span>
+                            <span className="text-[#2d6a4f] font-semibold">{ord.senasaGuide}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
+                            Ver Lote en Marketplace
+                          </Link>
+                          {ord.status === 'contract_locked' && (
+                            <button
+                              onClick={() => alert(`Descargando Contrato Comercial y Póliza Escrow para orden ${ord.id}...`)}
+                              className="button button-small button-dark text-xs"
+                            >
+                              <Download size={13} /> Contrato Escrow
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="no-records">
-                  <span>
-                    <Sprout size={18} />
-                  </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sección: Pasaportes Ambientales EUDR y Certificaciones Descargables */}
+            <div className="mb-8">
+              <h2 className="text-xl font-serif font-bold text-[#1b4332] mb-4">Pasaportes Ambientales EUDR y Fichas Técnicas</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
                   <div>
-                    <b>No hay lotes en memoria</b>
-                    <small>Usa el botón de arriba para registrar tu primera cosecha.</small>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
+                      PORTAL TRACES NT
+                    </span>
+                    <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Pasaporte GeoJSON Polígonos</h3>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      Coordenadas poligonales de parcelas para verificación automática en el sistema de aduanas de la Unión Europea (Reglamento UE 2023/1115).
+                    </p>
                   </div>
+                  <button
+                    onClick={() => alert('Descargando archivo vectorial: pasaporte-eudr-poligonos-TA0427.geojson')}
+                    className="mt-4 button button-small button-dark w-full text-xs justify-center"
+                  >
+                    <Download size={14} /> Descargar GeoJSON (.json)
+                  </button>
                 </div>
-              )}
 
-              {/* Barra de Navegación Inferior de la App Móvil */}
-              <div className="phone-nav">
-                <span className="phone-nav-active">
-                  <Leaf size={16} />
-                  Cosechas
-                </span>
-                <span onClick={() => handleSyncToSupabase()} className="cursor-pointer">
-                  <CloudUpload size={16} />
-                  Sincronizar
-                </span>
-                <span onClick={() => setIsModalOpen(true)} className="cursor-pointer">
-                  <Plus size={16} />
-                  Registrar
-                </span>
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
+                      ISO/IEC 17025
+                    </span>
+                    <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Certificado Metales & Cadmio</h3>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      Ensayo químico de laboratorio acreditado: Cadmio &lt; 0.28 ppm (Límite UE: 0.60 ppm) y Humedad 6.8%.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => alert('Descargando certificado oficial: laboratorio-cadmio-humedad-TA0427.pdf')}
+                    className="mt-4 button button-small button-dark w-full text-xs justify-center"
+                  >
+                    <Download size={14} /> Descargar Certificado (PDF)
+                  </button>
+                </div>
+
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
+                      SCAA / Q-GRADER
+                    </span>
+                    <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Ficha Técnica Sensorial</h3>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      Perfil de cata: 88 Puntos SCAA, descriptores de notas a frutos rojos secos, panela de caña y jazmín silvestre.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => alert('Descargando ficha sensorial: reporte-sensorial-scaa-TA0427.pdf')}
+                    className="mt-4 button button-small button-dark w-full text-xs justify-center"
+                  >
+                    <Download size={14} /> Descargar Ficha Sensorial
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            PERSPECTIVA: COOPERATIVA PRODUCTORA (Asociación Bosque Vivo)
+            ========================================================================= */}
+        {activeRole === 'seller' && (
+          <div>
+            {/* Banner Institucional del Vendedor */}
+            <div className="b2b-banner">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
+                    Cooperativa Productora · RUC Agrario: 20608912341
+                  </span>
+                  <h1 className="text-2xl sm:text-3xl font-serif">Asociación Bosque Vivo</h1>
+                  <p className="text-sm text-gray-200 mt-1">
+                    Comunidad Nativa Boca Pariamanu · Pueblo Amahuaca · Madre de Dios, Perú
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-lg bg-[#b07d3b] text-white text-xs font-bold font-mono">
+                    Gold Supplier Agroforestal
+                  </span>
+                  <span className="px-3 py-1.5 rounded-lg bg-[#112a20] text-emerald-300 text-xs font-semibold border border-emerald-500/30">
+                    Sentinel-2 Verificado (4,250 ha)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* KPIs de la Cooperativa */}
+            <div className="b2b-kpis-grid">
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes en Vitrina</span>
+                  <Store size={18} className="text-[#2d6a4f]" />
+                </div>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalLotsPublished}</p>
+                <p className="text-xs text-gray-500 mt-1">Cosechas activas en marketplace</p>
               </div>
 
-              {/* MODAL INTERACTIVO DE REGISTRO EN PARCELA */}
-              {isModalOpen && (
-                <div className="field-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}>
-                  <div className="field-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-harvest-title">
-                    <div className="field-modal-header">
-                      <h3 id="modal-harvest-title">
-                        <Sprout size={18} className="text-[#2d6a4f]" /> Registrar Cosecha
-                      </h3>
-                      <button
-                        className="field-modal-close"
-                        onClick={() => setIsModalOpen(false)}
-                        aria-label="Cerrar modal"
-                        data-testid="button-close-harvest-modal"
-                      >
-                        <X size={15} />
-                      </button>
-                    </div>
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Stock Disponible</span>
+                  <Layers size={18} className="text-[#b07d3b]" />
+                </div>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalStockKg.toLocaleString()} kg</p>
+                <p className="text-xs text-gray-500 mt-1">Almacén Callao y Puerto Maldonado</p>
+              </div>
 
-                    <form onSubmit={handleSaveHarvest} className="harvest-form">
-                      {/* Tipo de Fruto */}
-                      <label className="app-field">
-                        <span>TIPO DE FRUTO</span>
-                        <select
-                          value={formFruit}
-                          onChange={(e) => setFormFruit(e.target.value as any)}
-                          data-testid="select-harvest-fruit"
-                        >
-                          <option value="Cacao">Cacao Nativo Chuncho / Criollo</option>
-                          <option value="Café">Café de Sombra Especial</option>
-                          <option value="Castaña">Castaña Amazónica Silvestre</option>
-                          <option value="Copoazú">Copoazú Silvestre</option>
-                          <option value="Aguaje">Aguaje Silvestre</option>
-                        </select>
-                        <ChevronDown size={14} />
-                      </label>
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Solicitudes RFQ</span>
+                  <Clock size={18} className="text-[#1b4332]" />
+                </div>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{pendingRfqsCount}</p>
+                <p className="text-xs text-gray-500 mt-1">Cotizaciones pendientes de respuesta</p>
+              </div>
 
-                      {/* Peso Estimado en kg */}
-                      <label className="app-field">
-                        <span>PESO ESTIMADO (KG)</span>
-                        <div className="weight-input">
-                          <input
-                            type="number"
-                            min="1"
-                            step="0.5"
-                            value={formWeight}
-                            onChange={(e) => setFormWeight(e.target.value)}
-                            placeholder="Ej. 150.0"
-                            required
-                            aria-label="Peso estimado en kg"
-                            data-testid="input-harvest-kg"
-                          />
-                          <b>kg</b>
-                        </div>
-                      </label>
+              <div className="b2b-kpi-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Ingresos Proyectados</span>
+                  <TrendingUp size={18} className="text-[#2d6a4f]" />
+                </div>
+                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">$98,400 USD</p>
+                <p className="text-xs text-gray-500 mt-1">Contratos FOB temporada 2025</p>
+              </div>
+            </div>
 
-                      {/* Captura de Coordenadas GPS */}
-                      <div className="capture-row">
-                        <div className="capture-copy">
-                          <span className="capture-icon">
-                            <MapPin size={15} />
+            {/* Bandeja de Cotizaciones RFQ y Pedidos de Muestras Entrantes */}
+            <div className="mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-serif font-bold text-[#1b4332]">Bandeja de Solicitudes RFQ y Pedidos de Muestras</h2>
+                  <p className="text-xs text-gray-500">Responde o despacha muestras con compradores internacionales en tiempo real.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {orders.map((ord) => (
+                  <div key={ord.id} className="b2b-order-card" data-testid={`seller-order-${ord.id}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                            {ord.id}
                           </span>
-                          <span>
-                            <b>Coordenadas Parcela</b>
-                            <small>{formCoords || 'Presiona para capturar satélite'}</small>
-                          </span>
+                          <span className="font-bold text-sm text-[#1b4332]">{ord.buyerOrg}</span>
+                          <span className="text-xs text-gray-500">({ord.buyerCountry})</span>
                         </div>
-                        <button
-                          type="button"
-                          className="capture-button"
-                          onClick={handleCaptureGPS}
-                          data-testid="button-capture-gps"
-                        >
-                          {formCoords ? 'Recapturar' : 'Capturar GPS'} <LocateFixed size={12} />
-                        </button>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Requerimiento: <b>{ord.lotName}</b> (Lote {ord.lotId}) · Volumen: <b>{ord.requestedKg.toLocaleString()} kg</b> · Fecha: {ord.createdAt}
+                        </p>
+                        {ord.notes && <p className="text-xs italic text-gray-500 mt-0.5">Nota: {ord.notes}</p>}
                       </div>
 
-                      {/* Subida de Fotografía */}
-                      <label className={`photo-upload ${formPhoto ? 'has-photo' : ''}`}>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoUpload}
-                          aria-label="Cargar foto de la cosecha"
-                          data-testid="input-harvest-photo"
-                        />
-                        {formPhoto ? (
-                          <>
-                            <img src={formPhoto} alt="Vista previa de cosecha" />
-                            <span className="photo-upload-label">
-                              <Check size={13} /> Foto adjuntada (Cambiar)
-                            </span>
-                          </>
+                      <div className="flex items-center gap-2">
+                        {ord.status === 'submitted' && (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                            Nueva Solicitud (Acción Requerida)
+                          </span>
+                        )}
+                        {ord.status === 'quoted' && (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                            Cotización Aprobada por Cooperativa
+                          </span>
+                        )}
+                        {ord.status === 'sample_dispatched' && (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            Muestra Despachada (SENASA Emitido)
+                          </span>
+                        )}
+                        {ord.status === 'contract_locked' && (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+                            Contrato Cerrado con Escrow Protegido
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Botones de Acción Operativa de la Cooperativa */}
+                    <div className="pt-3 flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs text-gray-600">
+                        {ord.trackingCode ? (
+                          <span className="font-mono text-[#1b4332]">
+                            Guía Asignada: <b>{ord.courier} ({ord.trackingCode})</b> · Precinto: <b>{ord.senasaGuide}</b>
+                          </span>
                         ) : (
+                          <span>Sin despacho físico registrado aún.</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {ord.status === 'submitted' && (
                           <>
-                            <span className="upload-icon">
-                              <Upload size={15} />
-                            </span>
-                            <span>
-                              <b>Foto de la Cosecha en Parcela</b>
-                              <small>Toca para abrir cámara o galería</small>
-                            </span>
-                            <ArrowUpRight size={14} />
+                            <button
+                              onClick={() => {
+                                updateOrderStatus(ord.id, 'quoted');
+                                showNotice(`Cotización para orden ${ord.id} aprobada con éxito. Notificación enviada al comprador.`);
+                              }}
+                              className="b2b-action-btn-green"
+                              data-testid={`btn-accept-quote-${ord.id}`}
+                            >
+                              <Check size={14} /> Aceptar Cotización (RFQ)
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                const tracking = 'DHL-PE-' + Math.floor(1000000 + Math.random() * 9000000);
+                                const senasa = 'SENASA-MDD-2025-' + Math.floor(1000 + Math.random() * 9000);
+                                updateOrderStatus(ord.id, 'sample_dispatched', {
+                                  trackingCode: tracking,
+                                  courier: 'DHL Green Express',
+                                  senasaGuide: senasa,
+                                });
+                                showNotice(`Muestra despachada para ${ord.buyerOrg}. Guía Courier: ${tracking} y precinto fitosanitario ${senasa}.`);
+                              }}
+                              className="b2b-action-btn-brown"
+                              data-testid={`btn-dispatch-sample-${ord.id}`}
+                            >
+                              <Truck size={14} /> Despachar Muestra (Guía SENASA)
+                            </button>
                           </>
                         )}
-                      </label>
 
-                      {/* Botón de Guardado Local */}
-                      <button type="submit" className="save-harvest" data-testid="button-save-harvest">
-                        <Check size={15} /> Guardar en Memoria Local (Offline)
-                      </button>
-                    </form>
+                        {(ord.status === 'quoted' || ord.status === 'sample_dispatched') && (
+                          <button
+                            onClick={() => {
+                              updateOrderStatus(ord.id, 'contract_locked', {
+                                escrowStatus: 'funded',
+                                trackingCode: ord.trackingCode || 'HAPAG-LLOYD-FCL-' + Math.floor(1000 + Math.random() * 9000),
+                                courier: ord.courier || 'Naviera Marítima Callao',
+                                senasaGuide: ord.senasaGuide || 'SENASA-EXP-2025-9941'
+                              });
+                              showNotice(`Contrato comercial formalizado para ${ord.buyerOrg}. Fondos en custodia Escrow asegurados al 100%.`);
+                            }}
+                            className="b2b-action-btn-green"
+                            data-testid={`btn-lock-contract-${ord.id}`}
+                          >
+                            <ShieldCheck size={14} /> Formalizar Contrato con Escrow
+                          </button>
+                        )}
+
+                        <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
+                          Ver Lote
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-            <div className="phone-home-indicator" />
+
+            {/* Tabla de Gestión de Lotes y Cosechas Publicadas */}
+            <div className="mb-10">
+              <h2 className="text-xl font-serif font-bold text-[#1b4332] mb-4">Gestión de Cosechas Publicadas en Vitrina</h2>
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-[#faf6f0] border-b border-gray-200 text-[#1b4332] uppercase tracking-wider font-semibold">
+                      <tr>
+                        <th className="py-3 px-4">Lote ID</th>
+                        <th className="py-3 px-4">Producto Agrícola</th>
+                        <th className="py-3 px-4">Stock Disponible</th>
+                        <th className="py-3 px-4">Lote Total</th>
+                        <th className="py-3 px-4">Precio Base FOB</th>
+                        <th className="py-3 px-4">Estado Cosecha</th>
+                        <th className="py-3 px-4 text-right">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {initialLots.map((l) => (
+                        <tr key={l.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#1b4332]">{l.id}</td>
+                          <td className="py-3.5 px-4 font-serif font-bold text-[#1b4332]">{l.name}</td>
+                          <td className="py-3.5 px-4 font-semibold text-emerald-800">{l.availableKg.toLocaleString()} kg</td>
+                          <td className="py-3.5 px-4 text-gray-600">{l.totalKg.toLocaleString()} kg</td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#1b4332]">${l.priceFob.toFixed(2)} / kg</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-800">
+                              {l.dispatchStatus}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <Link href={`/lote/${l.id}`} className="text-xs font-semibold text-[#2d6a4f] hover:underline">
+                              Ver Ficha
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Gobernanza Territorial y Custodia Satelital */}
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-[#1b4332]">Gobernanza Territorial y Custodia Satelital</h3>
+                  <p className="text-xs text-gray-500">Monitoreo continuo de concesiones y parcelas comunales de la Asociación Bosque Vivo.</p>
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Cero Alertas GLAD 2024-2025
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
+                  <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Territorio Custodiado</span>
+                  <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">4,250 Hectáreas</p>
+                  <p className="text-[11px] text-gray-600 mt-1">Bosque primario húmedo tropical</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
+                  <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Salud del Dosel (NDVI)</span>
+                  <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">0.89 Promedio</p>
+                  <p className="text-[11px] text-gray-600 mt-1">Sentinel-2 (ESA) actualizado semanalmente</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
+                  <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Resolución Oficial</span>
+                  <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">SERFOR-MDD-042</p>
+                  <p className="text-[11px] text-gray-600 mt-1">Concesión forestal no maderable vigente</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="phone-caption">
-            <span>MODO OFFLINE · INDEXEDDB</span>
-            <span>PRODUCCIÓN V2.4</span>
-          </div>
-        </div>
+        )}
       </div>
 
       <Footer />
@@ -3384,19 +4075,22 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <RoutedErrorBoundary>
-              <Switch>
-                <Route path="/" component={Home} />
-                <Route path="/marketplace" component={Marketplace} />
-                <Route path="/lote/:id" component={LotDetail} />
-                <Route path="/agroturismo" component={AgroturismoPage} />
-                <Route path="/app" component={FieldApp} />
-                <Route component={NotFound} />
-              </Switch>
-            </RoutedErrorBoundary>
-          </WouterRouter>
-          <Toaster />
+          <B2BOrdersProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+              <RoutedErrorBoundary>
+                <Switch>
+                  <Route path="/" component={Home} />
+                  <Route path="/marketplace" component={Marketplace} />
+                  <Route path="/lote/:id" component={LotDetail} />
+                  <Route path="/agroturismo" component={AgroturismoPage} />
+                  <Route path="/panel" component={B2BDashboardPage} />
+                  <Route path="/app" component={MobileAppLandingPage} />
+                  <Route component={NotFound} />
+                </Switch>
+              </RoutedErrorBoundary>
+            </WouterRouter>
+            <Toaster />
+          </B2BOrdersProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
