@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from 'wouter';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Building2, Check, CheckCircle2,
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Building2, Check, CheckCircle2, LogOut,
   ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
   Coffee, Compass, Download, ExternalLink, Eye, FileCheck, FileText, Filter, Globe2, Handshake, Heart, Info,
   Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck,
@@ -538,7 +538,7 @@ function AuthModal() {
 
             <div className="mt-5 pt-4 border-t border-[#e8e6df]">
               <span className="text-[10px] uppercase font-bold tracking-wider text-[#727973] block mb-2 text-center">
-                ⚡ Acceso Rápido de Prueba (Demo B2B)
+                Acceso Rápido de Prueba (Demo B2B)
               </span>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -548,7 +548,7 @@ function AuthModal() {
                   data-testid="demo-login-buyer"
                 >
                   <span className="text-[11px] font-bold text-[#1b4332] block flex items-center gap-1">
-                    🛒 Comprador B2B
+                    <Building2 size={13} /> Comprador B2B
                   </span>
                   <small className="text-[10px] text-[#525f56]">Valrhona Artisans S.A.</small>
                 </button>
@@ -559,7 +559,7 @@ function AuthModal() {
                   data-testid="demo-login-seller"
                 >
                   <span className="text-[11px] font-bold text-[#954a17] block flex items-center gap-1">
-                    🌿 Cooperativa
+                    <Leaf size={13} /> Cooperativa
                   </span>
                   <small className="text-[10px] text-[#525f56]">Asoc. Bosque Vivo</small>
                 </button>
@@ -747,30 +747,27 @@ function Header({ active }: { active?: string }) {
             Ruta Agroturismo
           </Link>
           <Link href="/app" className={active === 'app' ? 'nav-link active' : 'nav-link'} data-testid="link-field-app">
-            📱 App de Campo PWA
+            App de Campo PWA
           </Link>
         </nav>
         <div className="header-actions">
           {currentUser ? (
-            <div className="header-user-badge">
-              <span className="user-avatar-dot">
-                {currentUser.name[0]?.toUpperCase()}
-              </span>
-              <div className="flex flex-col text-left leading-tight">
-                <span className="font-semibold text-xs text-[#071b12]">
-                  {currentUser.organization || currentUser.name}
-                </span>
-                <span className="text-[10px] text-[#2d6a4f] font-medium">
-                  {currentUser.role === 'buyer' ? '🛒 Comprador B2B' : '🌿 Cooperativa Amazónica'}
-                </span>
-              </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/app"
+                className="button button-dark button-small"
+                data-testid="button-my-panel"
+              >
+                Mi Panel
+              </Link>
               <button
                 onClick={logout}
-                className="ml-2 text-xs text-red-700 hover:text-red-900 font-semibold px-2 py-0.5 rounded bg-red-50 hover:bg-red-100 transition-colors"
+                className="p-2 rounded-lg text-[#424843] hover:text-[#954a17] hover:bg-[#efeee9] transition-colors"
                 title="Cerrar sesión"
+                aria-label="Cerrar sesión"
                 data-testid="button-logout"
               >
-                Salir
+                <LogOut size={18} />
               </button>
             </div>
           ) : (
@@ -2209,15 +2206,15 @@ function LotDetail() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-100 text-xs">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center text-[10px] font-bold">✓</span>
+                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center"><Check size={11} /></span>
                 <span className="text-[11px] text-[#424843]">Captura Offline en Parcela</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center text-[10px] font-bold">✓</span>
+                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center"><Check size={11} /></span>
                 <span className="text-[11px] text-[#424843]">Hash Inmutable PostGIS</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center text-[10px] font-bold">✓</span>
+                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center"><Check size={11} /></span>
                 <span className="text-[11px] text-[#424843]">Acreditado Reg. UE 2023/1115</span>
               </div>
             </div>
@@ -2770,10 +2767,10 @@ function FieldApp() {
 
   const pendingCount = records.filter((r) => r.syncStatus === 'pending').length;
   const syncStateLabel = !online
-    ? '🔴 Modo Sin Señal (Parcela)'
+    ? 'Modo Sin Señal (Parcela)'
     : pendingCount > 0
-    ? `🟡 ${pendingCount} ${pendingCount === 1 ? 'lote pendiente' : 'lotes pendientes'} en caché local`
-    : '🟢 Sincronizado con Supabase';
+    ? `${pendingCount} ${pendingCount === 1 ? 'lote pendiente' : 'lotes pendientes'} en caché local`
+    : 'Sincronizado con Supabase';
 
   /**
    * Simula la auto-captura de coordenadas GPS de alta precisión en parcela
@@ -2829,13 +2826,13 @@ function FieldApp() {
    */
   const handleSyncToSupabase = () => {
     if (!online) {
-      setSyncMessage('⚠️ Conecta el dispositivo a internet para sincronizar con la nube.');
+      setSyncMessage('Conecta el dispositivo a internet para sincronizar con la nube.');
       window.setTimeout(() => setSyncMessage(''), 3500);
       return;
     }
 
     if (pendingCount === 0) {
-      setSyncMessage('✅ Todos los lotes locales ya están sincronizados en Supabase.');
+      setSyncMessage('Todos los lotes locales ya están sincronizados en Supabase.');
       window.setTimeout(() => setSyncMessage(''), 3500);
       return;
     }
@@ -2855,7 +2852,7 @@ function FieldApp() {
             : r
         )
       );
-      setSyncMessage(`🟢 Sincronización exitosa: ${pendingCount} lotes subidos a Supabase Cloud con hash QR.`);
+      setSyncMessage(`Sincronización exitosa: ${pendingCount} lotes subidos a Supabase Cloud con hash QR.`);
       window.setTimeout(() => {
         setSyncMessage('');
         setSyncProgress(0);
@@ -3024,7 +3021,7 @@ function FieldApp() {
                 onClick={() => setIsModalOpen(true)}
                 data-testid="button-new-harvest"
               >
-                <Plus size={16} /> ➕ Nuevo Registro en Parcela
+                <Plus size={16} /> Nuevo Registro en Parcela
               </button>
 
               {/* Barra de Progreso de Sincronización */}
