@@ -1,0 +1,1 @@
+- [TrazAmazon product context](trazamazon-product-context.md) — competition prototype for Amazonian producer communities and B2B buyers, centered on traceability and offline field capture.

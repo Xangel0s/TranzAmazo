@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "TrazAmazon"
+description = "Una plataforma web para descubrir productos amazónicos con trazabilidad por lote, solicitar cotizaciones B2B y registrar cosechas incluso sin conexión."
+version = "1.0.0"
+id = "artifacts/trazamazon"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20503
+
+[services.development]
+run = "pnpm --filter @workspace/trazamazon run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/trazamazon", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/trazamazon/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20503"
+BASE_PATH = "/"

@@ -1,0 +1,24 @@
+Actúa como experto Senior en Frontend y UI/UX (React, Tailwind CSS, Next.js App Router, Lucide Icons y Framer Motion si es posible). Necesito que me generes un prototipo web interactivo completo y funcional llamado "TrazAmazon", una plataforma offline-first de trazabilidad agrícola y marketplace B2B para la Amazonía (diseñado para la competencia Impact Startup Competition 2027).
+
+El diseño debe ser ultra moderno, limpio, con una paleta de colores inspirada en la selva (Verde esmeralda principal #1B4332 / #2D6A4F, fondos claros y acentos tierra/ámbar #B07D3B). 
+
+Incluye un componente flotante o barra superior de navegación general para alternar fácilmente entre las vistas principales del proyecto:
+
+1. LANDING PAGE INICIAL Y MARKETPLACE WEB (/(web landing) y /marketplace):
+   - Navbar superior con logo "TrazAmazon", enlaces a "Inicio", "Marketplace B2B", "Visor QR" y "Ruta Agroturismo".
+   - Buscador superior y filtros laterales funcionales (por tipo de fruto: Cacao, Café, Castaña, Aguaje; región amazónica; y certificación ambiental "Cero Deforestación").
+   - Grid de tarjetas de productos amazónicos con: foto real, cooperativa de origen, precio por volumen, sellos de acreditación y un botón interactivo "Solicitar Cotización / Ver Trazabilidad".
+   - Sección de impacto social y ambiental (ODS y Bioeconomía).
+
+2. VISTA DE DETALLE / VISOR POR CÓDIGO QR (/lote/[id]):
+   - Una vista simulada que se abre al hacer clic en un producto, mostrando el mapa satelital de la parcela (componente visual estilizado), fecha exacta de cosecha, rostro del agricultor y sus insignias verificadas.
+   - Una sección inferior llamada "Ruta TrazAmazon: Vive la experiencia en nuestra comunidad" con galería turística y un botón funcional de "Reservar Agroturismo Vivencial".
+
+3. VISTA MÓVIL - APP DE CAMPO OFFLINE-FIRST (/app):
+   - Un header que indique en tiempo real el estado de conexión con toggle manual ("🟢 Sincronizado" / "🟡 3 lotes pendientes en caché local").
+   - Un botón grande y destacado de "➕ Nuevo Registro en Parcela".
+   - Un formulario modal interactivo para registrar: Tipo de fruto, Peso estimado en kg, Selector de coordenadas GPS (simulado con botón de captura automática) y carga de foto. Al guardar, debe agregarse dinámicamente a la lista local.
+   - Lista interactiva de "Lotes Locales en Caché" con barras de estado de sincronización y opción de simular la subida a la nube (Supabase).
+   - Tarjeta de "Perfil de Productor" con su insignia digital "Cero Deforestación TrazAmazon".
+
+Asegúrate de que la aplicación sea totalmente responsive (con un contenedor móvil estilizado cuando se vea en pantallas grandes), altamente interactiva con estados de React funcionales y que luzca con calidad de nivel de inversión para hackathon.
