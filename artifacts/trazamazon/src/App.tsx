@@ -6,13 +6,21 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from 'wouter';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Boxes, Building2, Check, CheckCircle2, Database, DollarSign, Droplets, FlaskConical, LogOut, Mountain, Thermometer,
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Boxes, Building2, Camera, Check, CheckCircle2, Copy, Database, DollarSign, Droplets, FileCode, FlaskConical, Image, LogOut, Mountain, Navigation, Thermometer,
   ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
   Coffee, Compass, Download, ExternalLink, Eye, FileCheck, FileText, Filter, Globe2, Handshake, Heart, Info,
   Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck,
-  Play, Plus, QrCode, RefreshCw, Search, Send, ShieldCheck, Ship, ShoppingCart, SlidersHorizontal,
+  Play, Plus, QrCode, RefreshCw, Save, Search, Send, Settings, ShieldCheck, Ship, ShoppingCart, SlidersHorizontal,
   Smartphone, Sprout, Star, Store, TreePine, TrendingUp, Truck, Upload, User, Users, Wifi, WifiOff, X
 } from 'lucide-react';
+import {
+  fetchCooperativeProfile,
+  saveCooperativeProfile,
+  defaultCooperativeProfile,
+  getSupabaseSchemaSql,
+  SUPABASE_URL,
+  type CooperativeProfile
+} from './lib/supabase';
 
 const queryClient = new QueryClient();
 
@@ -3442,17 +3450,132 @@ function MobileAppLandingPage() {
 }
 
 /**
- * VISTA 4: Dashboard B2B Unificado (/panel) (Alibaba Trade Assurance Workbench)
+ * VISTA 4: Dashboard B2B Workbench Unificado (/panel) (Estilo Alibaba Gold Supplier)
  */
 function B2BDashboardPage() {
   const { currentUser } = useAuth();
   const { orders, updateOrderStatus } = useB2BOrders();
-  const [activeRole, setActiveRole] = useState<'buyer' | 'seller'>(currentUser?.role || 'buyer');
+  const [activeRole, setActiveRole] = useState<'buyer' | 'seller'>(currentUser?.role || 'seller');
+
+  // Pestañas activas por rol
+  const [sellerTab, setSellerTab] = useState<'overview' | 'orders' | 'lots' | 'customize' | 'location' | 'satellite' | 'supabase'>('overview');
+  const [buyerTab, setBuyerTab] = useState<'overview' | 'orders' | 'passports' | 'profile'>('overview');
+
+  // Perfil de la cooperativa y catálogo de lotes con fotos editables
+  const [coopProfile, setCoopProfile] = useState<CooperativeProfile>(defaultCooperativeProfile);
+  const [lots, setLots] = useState<ProductLot[]>(initialLots);
+
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [sqlCopied, setSqlCopied] = useState(false);
+
+  // Cargar perfil desde Supabase / Local al montar
+  useEffect(() => {
+    fetchCooperativeProfile().then((profile) => {
+      if (profile) setCoopProfile(profile);
+    });
+  }, []);
 
   const showNotice = (msg: string) => {
     setActionNotice(msg);
-    setTimeout(() => setActionNotice(null), 4000);
+    setTimeout(() => setActionNotice(null), 4500);
+  };
+
+  // Manejadores de subida de imágenes
+  const handleAvatarUpload = (e: FormEvent<HTMLInputElement>) => {
+    const file = (e.currentTarget as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCoopProfile((prev) => ({ ...prev, avatarUrl: String(reader.result) }));
+        showNotice('Logo / Avatar oficial actualizado con éxito.');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBannerUpload = (e: FormEvent<HTMLInputElement>) => {
+    const file = (e.currentTarget as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCoopProfile((prev) => ({ ...prev, bannerUrl: String(reader.result) }));
+        showNotice('Banner panorámico de tienda actualizado con éxito.');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLeaderImageUpload = (e: FormEvent<HTMLInputElement>) => {
+    const file = (e.currentTarget as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCoopProfile((prev) => ({ ...prev, leaderImageUrl: String(reader.result) }));
+        showNotice('Fotografía del dirigente / socio actualizada.');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFacilityImageUpload = (index: number, e: FormEvent<HTMLInputElement>) => {
+    const file = (e.currentTarget as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCoopProfile((prev) => {
+          const updated = [...prev.facilityImages];
+          updated[index] = String(reader.result);
+          return { ...prev, facilityImages: updated };
+        });
+        showNotice(`Fotografía de instalación #${index + 1} actualizada con éxito.`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProductPhotoUpload = (lotId: string, e: FormEvent<HTMLInputElement>) => {
+    const file = (e.currentTarget as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const photoUrl = String(reader.result);
+        setLots((prev) =>
+          prev.map((l) => (l.id === lotId ? { ...l, image: photoUrl } : l))
+        );
+        showNotice(`Fotografía del lote ${lotId} actualizada en la vitrina comercial.`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Guardar perfil de cooperativa en Supabase
+  const handleSaveProfile = async (e: FormEvent) => {
+    e.preventDefault();
+    const result = await saveCooperativeProfile(coopProfile);
+    if (result.cloudSynced) {
+      showNotice('Perfil de la cooperativa guardado y sincronizado en Supabase Cloud con éxito.');
+    } else {
+      showNotice('Perfil guardado en memoria local segura (Sincronizará con Supabase al detectar red).');
+    }
+  };
+
+  // Auto-captura de coordenadas GPS
+  const handleAutoCaptureGps = () => {
+    setCoopProfile((prev) => ({
+      ...prev,
+      latitude: '-12.4667',
+      longitude: '-69.2000',
+      gpsAccuracy: '±1.8m NMEA Submétrico'
+    }));
+    showNotice('Coordenadas GNSS capturadas del sensor de campo: -12.4667°, -69.2000° (Boca Pariamanu).');
+  };
+
+  // Copiar script SQL
+  const handleCopySql = () => {
+    navigator.clipboard.writeText(getSupabaseSchemaSql());
+    setSqlCopied(true);
+    showNotice('Script SQL DDL copiado al portapapeles. Listo para pegar en Supabase SQL Editor.');
+    setTimeout(() => setSqlCopied(false), 3000);
   };
 
   // KPIs Comprador
@@ -3464,30 +3587,37 @@ function B2BDashboardPage() {
     .filter((o) => o.escrowStatus === 'funded')
     .reduce((acc, curr) => acc + curr.totalUsd, 42100);
 
-  // KPIs Vendedor (Cooperativa Bosque Vivo)
+  // KPIs Vendedor
   const pendingRfqsCount = orders.filter((o) => o.status === 'submitted').length;
-  const totalLotsPublished = initialLots.length;
-  const totalStockKg = initialLots.reduce((acc, curr) => acc + curr.availableKg, 0);
+  const totalLotsPublished = lots.length;
+  const totalStockKg = lots.reduce((acc, curr) => acc + curr.availableKg, 0);
 
   return (
     <main className="grain min-h-screen flex flex-col bg-[#fbf9f5]">
       <Header active="panel" />
 
       <div className="b2b-panel-container">
-        {/* Breadcrumb */}
-        <div className="text-xs uppercase tracking-wider text-[#555555] font-sans mb-4 flex items-center gap-2">
-          <Link href="/" className="hover:text-[#1b4332] font-semibold">Inicio</Link>
-          <span>/</span>
-          <span className="text-[#1b4332] font-bold">Mi Panel B2B</span>
-          <span>/</span>
-          <span className="text-gray-500">{activeRole === 'buyer' ? 'Portal de Compras' : 'Gestión Cooperativa'}</span>
+        {/* Cabecera Superior con Breadcrumb y Estado de Supabase */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="text-xs uppercase tracking-wider text-[#555555] font-sans flex items-center gap-2">
+            <Link href="/" className="hover:text-[#1b4332] font-semibold">Inicio</Link>
+            <span>/</span>
+            <span className="text-[#1b4332] font-bold">Mi Panel B2B</span>
+            <span>/</span>
+            <span className="text-gray-500">Workbench Operativo</span>
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#e8f1ec] border border-[#2d6a4f]/25 text-[11px] font-mono font-semibold text-[#1b4332]">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+            Supabase Cloud: Conectado (yaxjpdhqjqsfqhladhl)
+          </div>
         </div>
 
         {/* Notificación de Acción Transaccional */}
         {actionNotice && (
           <div className="mb-6 p-4 rounded-xl bg-[#eef7f2] border border-[#2d6a4f]/30 text-[#1b4332] flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2.5">
-              <CheckCircle2 size={20} className="text-[#2d6a4f]" />
+              <CheckCircle2 size={20} className="text-[#2d6a4f] shrink-0" />
               <span className="text-sm font-semibold">{actionNotice}</span>
             </div>
             <button onClick={() => setActionNotice(null)} className="text-gray-400 hover:text-gray-700">
@@ -3496,22 +3626,26 @@ function B2BDashboardPage() {
           </div>
         )}
 
-        {/* Barra de Cambio de Perspectiva Bilateral (Estilo Alibaba) */}
+        {/* Barra de Cambio de Perspectiva Bilateral */}
         <div className="b2b-role-switcher-bar">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#1b4332] text-[#faf6f0] flex items-center justify-center font-bold text-sm">
-              {activeRole === 'buyer' ? 'V' : 'B'}
+            <div className="w-10 h-10 rounded-full bg-[#1b4332] text-[#faf6f0] flex items-center justify-center font-bold text-sm overflow-hidden">
+              {activeRole === 'buyer' ? (
+                'V'
+              ) : (
+                <img src={coopProfile.avatarUrl} alt="Logo" className="w-full h-full object-cover" />
+              )}
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-sans">Sesión Activa:</p>
+              <p className="text-xs text-gray-500 font-sans">Perspectiva Activa:</p>
               <h3 className="text-sm font-bold text-[#1b4332]">
-                {activeRole === 'buyer' ? 'Valrhona Artisans B2B (Francia)' : 'Asociación Bosque Vivo (Madre de Dios)'}
+                {activeRole === 'buyer' ? 'Valrhona Artisans B2B (Francia)' : coopProfile.name}
               </h3>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-sans hidden sm:inline">Perspectiva:</span>
+            <span className="text-xs text-gray-500 font-sans hidden sm:inline">Modo:</span>
             <div className="b2b-role-pill-group">
               <button
                 onClick={() => setActiveRole('buyer')}
@@ -3533,525 +3667,1148 @@ function B2BDashboardPage() {
           </div>
         </div>
 
-        {/* =========================================================================
-            PERSPECTIVA: COMPRADOR CORPORATIVO (Valrhona Artisans B2B)
-            ========================================================================= */}
-        {activeRole === 'buyer' && (
-          <div>
-            {/* Banner Institucional del Comprador */}
-            <div className="b2b-banner">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
-                    Comprador Corporativo Verificado · Tax ID: FR-84920192
-                  </span>
-                  <h1 className="text-2xl sm:text-3xl font-serif">Valrhona Artisans B2B</h1>
-                  <p className="text-sm text-gray-200 mt-1">
-                    Responsable de Abastecimiento: Alexandre Bonnat · Tain-l&apos;Hermitage, Francia
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 bg-white/10 px-4 py-2.5 rounded-xl border border-white/20">
-                  <ShieldCheck size={24} className="text-[#b07d3b]" />
-                  <div className="text-left text-xs">
-                    <p className="font-bold text-white">Garantía Trade Assurance</p>
-                    <p className="text-gray-300">Fondos protegidos en Escrow bancario</p>
-                  </div>
-                </div>
+        {/* ESTRUCTURA WORKBENCH: SIDEBAR + ÁREA DE CONTENIDO */}
+        <div className="b2b-workbench-layout">
+          {/* SIDEBAR DE UTILIDADES LATERAL */}
+          <aside className="b2b-workbench-sidebar">
+            <div className="b2b-sidebar-profile">
+              <div className="w-9 h-9 rounded-lg bg-[#faf6f0] border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
+                {activeRole === 'buyer' ? (
+                  <Building2 size={18} className="text-[#1b4332]" />
+                ) : (
+                  <img src={coopProfile.avatarUrl} alt="Logo" className="w-full h-full object-cover" />
+                )}
               </div>
-            </div>
-
-            {/* KPIs del Comprador */}
-            <div className="b2b-kpis-grid">
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Muestras Activas</span>
-                  <PackageCheck size={18} className="text-[#2d6a4f]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{activeSamplesCount}</p>
-                <p className="text-xs text-gray-500 mt-1">En tránsito courier puerta a puerto</p>
-              </div>
-
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes Contratados</span>
-                  <Handshake size={18} className="text-[#b07d3b]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{contractedLotsCount}</p>
-                <p className="text-xs text-gray-500 mt-1">Acuerdos comerciales firmados</p>
-              </div>
-
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Volumen Comprometido</span>
-                  <Layers size={18} className="text-[#1b4332]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalVolumeKg.toLocaleString()} kg</p>
-                <p className="text-xs text-gray-500 mt-1">Cacao criollo y café especial</p>
-              </div>
-
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Protección Escrow</span>
-                  <ShieldCheck size={18} className="text-[#2d6a4f]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">${totalEscrowUsd.toLocaleString()} USD</p>
-                <p className="text-xs text-gray-500 mt-1">Depósitos asegurados en custodia</p>
-              </div>
-            </div>
-
-            {/* Sección: Mis Cotizaciones (RFQs) y Pedidos de Muestras */}
-            <div className="mb-10">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-serif font-bold text-[#1b4332]">Mis Cotizaciones (RFQs) y Pedidos de Muestras</h2>
-                <Link href="/marketplace" className="text-xs font-semibold text-[#2d6a4f] hover:underline flex items-center gap-1">
-                  Solicitar Más Cosechas <ArrowRight size={14} />
-                </Link>
-              </div>
-
-              <div className="space-y-4">
-                {orders.map((ord) => {
-                  const isSample = ord.type === 'sample';
-                  return (
-                    <div key={ord.id} className="b2b-order-card" data-testid={`buyer-order-${ord.id}`}>
-                      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                              {ord.id}
-                            </span>
-                            <h4 className="font-serif font-bold text-[#1b4332] text-base">{ord.lotName}</h4>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Lote <b>{ord.lotId}</b> · Cooperativa: <b>{ord.cooperative}</b> · Solicitado: {ord.createdAt}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {ord.status === 'submitted' && (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                              Enviada · Esperando Proforma
-                            </span>
-                          )}
-                          {ord.status === 'quoted' && (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
-                              Proforma Aprobada · Por Despachar
-                            </span>
-                          )}
-                          {ord.status === 'sample_dispatched' && (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              Muestra Despachada (En Tránsito)
-                            </span>
-                          )}
-                          {ord.status === 'contract_locked' && (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
-                              Contrato Asegurado (Escrow 100%)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Stepper de Seguimiento Logístico */}
-                      <div className="b2b-stepper">
-                        <div className="b2b-step-item completed">
-                          <div className="b2b-step-circle">
-                            <Check size={14} />
-                          </div>
-                          <span className="text-[11px] font-semibold text-gray-700">1. Solicitud Recibida</span>
-                        </div>
-
-                        <div className={`b2b-step-item ${ord.status !== 'submitted' ? 'completed' : 'active'}`}>
-                          <div className="b2b-step-circle">
-                            {ord.status !== 'submitted' ? <Check size={14} /> : '2'}
-                          </div>
-                          <span className="text-[11px] font-semibold text-gray-700">2. Proforma / Aprobación</span>
-                        </div>
-
-                        <div className={`b2b-step-item ${ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? 'completed' : ''}`}>
-                          <div className="b2b-step-circle">
-                            {ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? <Check size={14} /> : '3'}
-                          </div>
-                          <span className="text-[11px] font-semibold text-gray-700">3. Despacho Courier SENASA</span>
-                        </div>
-
-                        <div className={`b2b-step-item ${ord.status === 'contract_locked' ? 'completed' : ''}`}>
-                          <div className="b2b-step-circle">
-                            {ord.status === 'contract_locked' ? <Check size={14} /> : '4'}
-                          </div>
-                          <span className="text-[11px] font-semibold text-gray-700">4. Arribo a Puerto / Escrow</span>
-                        </div>
-                      </div>
-
-                      {/* Caja de Logística e Información */}
-                      <div className="b2b-logistics-box">
-                        <div className="text-xs text-gray-700">
-                          <span className="font-semibold block text-[#1b4332]">Requerimiento:</span>
-                          {isSample ? 'Muestra técnica oficial de 500g' : `Lote comercial: ${ord.requestedKg.toLocaleString()} kg`} · Valor: ${ord.totalUsd.toLocaleString()} USD
-                        </div>
-
-                        {ord.trackingCode && (
-                          <div className="text-xs text-gray-700 font-mono">
-                            <span className="text-gray-500 block font-sans">Guía Courier / Naviera:</span>
-                            <span className="font-bold text-[#1b4332]">{ord.courier}: {ord.trackingCode}</span>
-                          </div>
-                        )}
-
-                        {ord.senasaGuide && (
-                          <div className="text-xs text-gray-700 font-mono">
-                            <span className="text-gray-500 block font-sans">Precinto Fitosanitario:</span>
-                            <span className="text-[#2d6a4f] font-semibold">{ord.senasaGuide}</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2">
-                          <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
-                            Ver Lote en Marketplace
-                          </Link>
-                          {ord.status === 'contract_locked' && (
-                            <button
-                              onClick={() => alert(`Descargando Contrato Comercial y Póliza Escrow para orden ${ord.id}...`)}
-                              className="button button-small button-dark text-xs"
-                            >
-                              <Download size={13} /> Contrato Escrow
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Sección: Pasaportes Ambientales EUDR y Certificaciones Descargables */}
-            <div className="mb-8">
-              <h2 className="text-xl font-serif font-bold text-[#1b4332] mb-4">Pasaportes Ambientales EUDR y Fichas Técnicas</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
-                      PORTAL TRACES NT
-                    </span>
-                    <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Pasaporte GeoJSON Polígonos</h3>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                      Coordenadas poligonales de parcelas para verificación automática en el sistema de aduanas de la Unión Europea (Reglamento UE 2023/1115).
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => alert('Descargando archivo vectorial: pasaporte-eudr-poligonos-TA0427.geojson')}
-                    className="mt-4 button button-small button-dark w-full text-xs justify-center"
-                  >
-                    <Download size={14} /> Descargar GeoJSON (.json)
-                  </button>
-                </div>
-
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
-                      ISO/IEC 17025
-                    </span>
-                    <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Certificado Metales & Cadmio</h3>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                      Ensayo químico de laboratorio acreditado: Cadmio &lt; 0.28 ppm (Límite UE: 0.60 ppm) y Humedad 6.8%.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => alert('Descargando certificado oficial: laboratorio-cadmio-humedad-TA0427.pdf')}
-                    className="mt-4 button button-small button-dark w-full text-xs justify-center"
-                  >
-                    <Download size={14} /> Descargar Certificado (PDF)
-                  </button>
-                </div>
-
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
-                      SCAA / Q-GRADER
-                    </span>
-                    <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Ficha Técnica Sensorial</h3>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                      Perfil de cata: 88 Puntos SCAA, descriptores de notas a frutos rojos secos, panela de caña y jazmín silvestre.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => alert('Descargando ficha sensorial: reporte-sensorial-scaa-TA0427.pdf')}
-                    className="mt-4 button button-small button-dark w-full text-xs justify-center"
-                  >
-                    <Download size={14} /> Descargar Ficha Sensorial
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* =========================================================================
-            PERSPECTIVA: COOPERATIVA PRODUCTORA (Asociación Bosque Vivo)
-            ========================================================================= */}
-        {activeRole === 'seller' && (
-          <div>
-            {/* Banner Institucional del Vendedor */}
-            <div className="b2b-banner">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
-                    Cooperativa Productora · RUC Agrario: 20608912341
-                  </span>
-                  <h1 className="text-2xl sm:text-3xl font-serif">Asociación Bosque Vivo</h1>
-                  <p className="text-sm text-gray-200 mt-1">
-                    Comunidad Nativa Boca Pariamanu · Pueblo Amahuaca · Madre de Dios, Perú
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1.5 rounded-lg bg-[#b07d3b] text-white text-xs font-bold font-mono">
-                    Gold Supplier Agroforestal
-                  </span>
-                  <span className="px-3 py-1.5 rounded-lg bg-[#112a20] text-emerald-300 text-xs font-semibold border border-emerald-500/30">
-                    Sentinel-2 Verificado (4,250 ha)
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* KPIs de la Cooperativa */}
-            <div className="b2b-kpis-grid">
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes en Vitrina</span>
-                  <Store size={18} className="text-[#2d6a4f]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalLotsPublished}</p>
-                <p className="text-xs text-gray-500 mt-1">Cosechas activas en marketplace</p>
-              </div>
-
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Stock Disponible</span>
-                  <Layers size={18} className="text-[#b07d3b]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalStockKg.toLocaleString()} kg</p>
-                <p className="text-xs text-gray-500 mt-1">Almacén Callao y Puerto Maldonado</p>
-              </div>
-
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Solicitudes RFQ</span>
-                  <Clock size={18} className="text-[#1b4332]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{pendingRfqsCount}</p>
-                <p className="text-xs text-gray-500 mt-1">Cotizaciones pendientes de respuesta</p>
-              </div>
-
-              <div className="b2b-kpi-card">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Ingresos Proyectados</span>
-                  <TrendingUp size={18} className="text-[#2d6a4f]" />
-                </div>
-                <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">$98,400 USD</p>
-                <p className="text-xs text-gray-500 mt-1">Contratos FOB temporada 2025</p>
-              </div>
-            </div>
-
-            {/* Bandeja de Cotizaciones RFQ y Pedidos de Muestras Entrantes */}
-            <div className="mb-10">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-serif font-bold text-[#1b4332]">Bandeja de Solicitudes RFQ y Pedidos de Muestras</h2>
-                  <p className="text-xs text-gray-500">Responde o despacha muestras con compradores internacionales en tiempo real.</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {orders.map((ord) => (
-                  <div key={ord.id} className="b2b-order-card" data-testid={`seller-order-${ord.id}`}>
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                            {ord.id}
-                          </span>
-                          <span className="font-bold text-sm text-[#1b4332]">{ord.buyerOrg}</span>
-                          <span className="text-xs text-gray-500">({ord.buyerCountry})</span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Requerimiento: <b>{ord.lotName}</b> (Lote {ord.lotId}) · Volumen: <b>{ord.requestedKg.toLocaleString()} kg</b> · Fecha: {ord.createdAt}
-                        </p>
-                        {ord.notes && <p className="text-xs italic text-gray-500 mt-0.5">Nota: {ord.notes}</p>}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {ord.status === 'submitted' && (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                            Nueva Solicitud (Acción Requerida)
-                          </span>
-                        )}
-                        {ord.status === 'quoted' && (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
-                            Cotización Aprobada por Cooperativa
-                          </span>
-                        )}
-                        {ord.status === 'sample_dispatched' && (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            Muestra Despachada (SENASA Emitido)
-                          </span>
-                        )}
-                        {ord.status === 'contract_locked' && (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
-                            Contrato Cerrado con Escrow Protegido
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Botones de Acción Operativa de la Cooperativa */}
-                    <div className="pt-3 flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-xs text-gray-600">
-                        {ord.trackingCode ? (
-                          <span className="font-mono text-[#1b4332]">
-                            Guía Asignada: <b>{ord.courier} ({ord.trackingCode})</b> · Precinto: <b>{ord.senasaGuide}</b>
-                          </span>
-                        ) : (
-                          <span>Sin despacho físico registrado aún.</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {ord.status === 'submitted' && (
-                          <>
-                            <button
-                              onClick={() => {
-                                updateOrderStatus(ord.id, 'quoted');
-                                showNotice(`Cotización para orden ${ord.id} aprobada con éxito. Notificación enviada al comprador.`);
-                              }}
-                              className="b2b-action-btn-green"
-                              data-testid={`btn-accept-quote-${ord.id}`}
-                            >
-                              <Check size={14} /> Aceptar Cotización (RFQ)
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                const tracking = 'DHL-PE-' + Math.floor(1000000 + Math.random() * 9000000);
-                                const senasa = 'SENASA-MDD-2025-' + Math.floor(1000 + Math.random() * 9000);
-                                updateOrderStatus(ord.id, 'sample_dispatched', {
-                                  trackingCode: tracking,
-                                  courier: 'DHL Green Express',
-                                  senasaGuide: senasa,
-                                });
-                                showNotice(`Muestra despachada para ${ord.buyerOrg}. Guía Courier: ${tracking} y precinto fitosanitario ${senasa}.`);
-                              }}
-                              className="b2b-action-btn-brown"
-                              data-testid={`btn-dispatch-sample-${ord.id}`}
-                            >
-                              <Truck size={14} /> Despachar Muestra (Guía SENASA)
-                            </button>
-                          </>
-                        )}
-
-                        {(ord.status === 'quoted' || ord.status === 'sample_dispatched') && (
-                          <button
-                            onClick={() => {
-                              updateOrderStatus(ord.id, 'contract_locked', {
-                                escrowStatus: 'funded',
-                                trackingCode: ord.trackingCode || 'HAPAG-LLOYD-FCL-' + Math.floor(1000 + Math.random() * 9000),
-                                courier: ord.courier || 'Naviera Marítima Callao',
-                                senasaGuide: ord.senasaGuide || 'SENASA-EXP-2025-9941'
-                              });
-                              showNotice(`Contrato comercial formalizado para ${ord.buyerOrg}. Fondos en custodia Escrow asegurados al 100%.`);
-                            }}
-                            className="b2b-action-btn-green"
-                            data-testid={`btn-lock-contract-${ord.id}`}
-                          >
-                            <ShieldCheck size={14} /> Formalizar Contrato con Escrow
-                          </button>
-                        )}
-
-                        <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
-                          Ver Lote
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Tabla de Gestión de Lotes y Cosechas Publicadas */}
-            <div className="mb-10">
-              <h2 className="text-xl font-serif font-bold text-[#1b4332] mb-4">Gestión de Cosechas Publicadas en Vitrina</h2>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-[#faf6f0] border-b border-gray-200 text-[#1b4332] uppercase tracking-wider font-semibold">
-                      <tr>
-                        <th className="py-3 px-4">Lote ID</th>
-                        <th className="py-3 px-4">Producto Agrícola</th>
-                        <th className="py-3 px-4">Stock Disponible</th>
-                        <th className="py-3 px-4">Lote Total</th>
-                        <th className="py-3 px-4">Precio Base FOB</th>
-                        <th className="py-3 px-4">Estado Cosecha</th>
-                        <th className="py-3 px-4 text-right">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {initialLots.map((l) => (
-                        <tr key={l.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="py-3.5 px-4 font-mono font-bold text-[#1b4332]">{l.id}</td>
-                          <td className="py-3.5 px-4 font-serif font-bold text-[#1b4332]">{l.name}</td>
-                          <td className="py-3.5 px-4 font-semibold text-emerald-800">{l.availableKg.toLocaleString()} kg</td>
-                          <td className="py-3.5 px-4 text-gray-600">{l.totalKg.toLocaleString()} kg</td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-[#1b4332]">${l.priceFob.toFixed(2)} / kg</td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-800">
-                              {l.dispatchStatus}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <Link href={`/lote/${l.id}`} className="text-xs font-semibold text-[#2d6a4f] hover:underline">
-                              Ver Ficha
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* Gobernanza Territorial y Custodia Satelital */}
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
-              <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-100">
-                <div>
-                  <h3 className="text-lg font-serif font-bold text-[#1b4332]">Gobernanza Territorial y Custodia Satelital</h3>
-                  <p className="text-xs text-gray-500">Monitoreo continuo de concesiones y parcelas comunales de la Asociación Bosque Vivo.</p>
-                </div>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  Cero Alertas GLAD 2024-2025
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-[#1b4332] truncate">
+                  {activeRole === 'buyer' ? 'Valrhona B2B' : coopProfile.name}
+                </p>
+                <span className="text-[10px] text-gray-500 block truncate">
+                  {activeRole === 'buyer' ? 'Comprador Mayorista' : 'Gold Supplier Agroforestal'}
                 </span>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
-                  <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Territorio Custodiado</span>
-                  <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">4,250 Hectáreas</p>
-                  <p className="text-[11px] text-gray-600 mt-1">Bosque primario húmedo tropical</p>
-                </div>
-
-                <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
-                  <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Salud del Dosel (NDVI)</span>
-                  <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">0.89 Promedio</p>
-                  <p className="text-[11px] text-gray-600 mt-1">Sentinel-2 (ESA) actualizado semanalmente</p>
-                </div>
-
-                <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
-                  <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Resolución Oficial</span>
-                  <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">SERFOR-MDD-042</p>
-                  <p className="text-[11px] text-gray-600 mt-1">Concesión forestal no maderable vigente</p>
-                </div>
-              </div>
             </div>
+
+            <nav aria-label="Navegación del Workbench">
+              {activeRole === 'buyer' ? (
+                <>
+                  <button
+                    onClick={() => setBuyerTab('overview')}
+                    className={`b2b-sidebar-nav-item ${buyerTab === 'overview' ? 'active' : ''}`}
+                    data-testid="buyer-tab-overview"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LayoutGrid size={15} /> Resumen General
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setBuyerTab('orders')}
+                    className={`b2b-sidebar-nav-item ${buyerTab === 'orders' ? 'active' : ''}`}
+                    data-testid="buyer-tab-orders"
+                  >
+                    <span className="flex items-center gap-2">
+                      <PackageCheck size={15} /> Cotizaciones & Muestras
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-current font-mono">
+                      {orders.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setBuyerTab('passports')}
+                    className={`b2b-sidebar-nav-item ${buyerTab === 'passports' ? 'active' : ''}`}
+                    data-testid="buyer-tab-passports"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileCheck size={15} /> Pasaportes EUDR & Calidad
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setBuyerTab('profile')}
+                    className={`b2b-sidebar-nav-item ${buyerTab === 'profile' ? 'active' : ''}`}
+                    data-testid="buyer-tab-profile"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Building2 size={15} /> Perfil de Comprador
+                    </span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setSellerTab('overview')}
+                    className={`b2b-sidebar-nav-item ${sellerTab === 'overview' ? 'active' : ''}`}
+                    data-testid="seller-tab-overview"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LayoutGrid size={15} /> Resumen de Ventas
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setSellerTab('orders')}
+                    className={`b2b-sidebar-nav-item ${sellerTab === 'orders' ? 'active' : ''}`}
+                    data-testid="seller-tab-orders"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Clock size={15} /> Bandeja de RFQs
+                    </span>
+                    {pendingRfqsCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-bold font-mono">
+                        {pendingRfqsCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setSellerTab('lots')}
+                    className={`b2b-sidebar-nav-item ${sellerTab === 'lots' ? 'active' : ''}`}
+                    data-testid="seller-tab-lots"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Boxes size={15} /> Gestión de Lotes & Fotos
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setSellerTab('customize')}
+                    className={`b2b-sidebar-nav-item ${sellerTab === 'customize' ? 'active' : ''}`}
+                    data-testid="seller-tab-customize"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Store size={15} /> Personalizar Perfil & Fotos
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setSellerTab('location')}
+                    className={`b2b-sidebar-nav-item ${sellerTab === 'location' ? 'active' : ''}`}
+                    data-testid="seller-tab-location"
+                  >
+                    <span className="flex items-center gap-2">
+                      <MapPin size={15} /> Ubicación Satelital & GPS
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setSellerTab('satellite')}
+                    className={`b2b-sidebar-nav-item ${sellerTab === 'satellite' ? 'active' : ''}`}
+                    data-testid="seller-tab-satellite"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck size={15} /> Auditoría Sentinel-2
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setSellerTab('supabase')}
+                    className={`b2b-sidebar-nav-item ${sellerTab === 'supabase' ? 'active' : ''}`}
+                    data-testid="seller-tab-supabase"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileCode size={15} /> Consola Supabase & SQL
+                    </span>
+                  </button>
+                </>
+              )}
+            </nav>
+          </aside>
+
+          {/* ÁREA DE CONTENIDO PRINCIPAL */}
+          <div className="b2b-workbench-content">
+            {/* ===================================================================
+                VISTAS DEL COMPRADOR
+                =================================================================== */}
+            {activeRole === 'buyer' && (
+              <>
+                {buyerTab === 'overview' && (
+                  <div>
+                    <div className="b2b-banner">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
+                            Comprador Corporativo Verificado · Tax ID: FR-84920192
+                          </span>
+                          <h1 className="text-2xl sm:text-3xl font-serif">Valrhona Artisans B2B</h1>
+                          <p className="text-sm text-gray-200 mt-1">
+                            Responsable de Abastecimiento: Alexandre Bonnat · Tain-l&apos;Hermitage, Francia
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 bg-white/10 px-4 py-2.5 rounded-xl border border-white/20">
+                          <ShieldCheck size={24} className="text-[#b07d3b]" />
+                          <div className="text-left text-xs">
+                            <p className="font-bold text-white">Garantía Trade Assurance</p>
+                            <p className="text-gray-300">Fondos protegidos en Escrow bancario</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="b2b-kpis-grid">
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Muestras Activas</span>
+                          <PackageCheck size={18} className="text-[#2d6a4f]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{activeSamplesCount}</p>
+                        <p className="text-xs text-gray-500 mt-1">En tránsito courier puerta a puerto</p>
+                      </div>
+
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes Contratados</span>
+                          <Handshake size={18} className="text-[#b07d3b]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{contractedLotsCount}</p>
+                        <p className="text-xs text-gray-500 mt-1">Acuerdos comerciales firmados</p>
+                      </div>
+
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Volumen Comprometido</span>
+                          <Layers size={18} className="text-[#1b4332]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalVolumeKg.toLocaleString()} kg</p>
+                        <p className="text-xs text-gray-500 mt-1">Cacao criollo y café especial</p>
+                      </div>
+
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Protección Escrow</span>
+                          <ShieldCheck size={18} className="text-[#2d6a4f]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">${totalEscrowUsd.toLocaleString()} USD</p>
+                        <p className="text-xs text-gray-500 mt-1">Depósitos asegurados en custodia</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {buyerTab === 'orders' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Mis Cotizaciones (RFQs) y Pedidos de Muestras</h2>
+                      <Link href="/marketplace" className="text-xs font-semibold text-[#2d6a4f] hover:underline flex items-center gap-1">
+                        Solicitar Más Cosechas <ArrowRight size={14} />
+                      </Link>
+                    </div>
+
+                    <div className="space-y-4">
+                      {orders.map((ord) => {
+                        const isSample = ord.type === 'sample';
+                        return (
+                          <div key={ord.id} className="b2b-order-card" data-testid={`buyer-order-${ord.id}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                                    {ord.id}
+                                  </span>
+                                  <h4 className="font-serif font-bold text-[#1b4332] text-base">{ord.lotName}</h4>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Lote <b>{ord.lotId}</b> · Cooperativa: <b>{ord.cooperative}</b> · Solicitado: {ord.createdAt}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {ord.status === 'submitted' && (
+                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                                    Enviada · Esperando Proforma
+                                  </span>
+                                )}
+                                {ord.status === 'quoted' && (
+                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                                    Proforma Aprobada · Por Despachar
+                                  </span>
+                                )}
+                                {ord.status === 'sample_dispatched' && (
+                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    Muestra Despachada (En Tránsito)
+                                  </span>
+                                )}
+                                {ord.status === 'contract_locked' && (
+                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+                                    Contrato Asegurado (Escrow 100%)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Stepper de Seguimiento Logístico */}
+                            <div className="b2b-stepper">
+                              <div className="b2b-step-item completed">
+                                <div className="b2b-step-circle">
+                                  <Check size={14} />
+                                </div>
+                                <span className="text-[11px] font-semibold text-gray-700">1. Solicitud Recibida</span>
+                              </div>
+
+                              <div className={`b2b-step-item ${ord.status !== 'submitted' ? 'completed' : 'active'}`}>
+                                <div className="b2b-step-circle">
+                                  {ord.status !== 'submitted' ? <Check size={14} /> : '2'}
+                                </div>
+                                <span className="text-[11px] font-semibold text-gray-700">2. Proforma / Aprobación</span>
+                              </div>
+
+                              <div className={`b2b-step-item ${ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? 'completed' : ''}`}>
+                                <div className="b2b-step-circle">
+                                  {ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? <Check size={14} /> : '3'}
+                                </div>
+                                <span className="text-[11px] font-semibold text-gray-700">3. Despacho Courier SENASA</span>
+                              </div>
+
+                              <div className={`b2b-step-item ${ord.status === 'contract_locked' ? 'completed' : ''}`}>
+                                <div className="b2b-step-circle">
+                                  {ord.status === 'contract_locked' ? <Check size={14} /> : '4'}
+                                </div>
+                                <span className="text-[11px] font-semibold text-gray-700">4. Arribo a Puerto / Escrow</span>
+                              </div>
+                            </div>
+
+                            {/* Caja de Logística e Información */}
+                            <div className="b2b-logistics-box">
+                              <div className="text-xs text-gray-700">
+                                <span className="font-semibold block text-[#1b4332]">Requerimiento:</span>
+                                {isSample ? 'Muestra técnica oficial de 500g' : `Lote comercial: ${ord.requestedKg.toLocaleString()} kg`} · Valor: ${ord.totalUsd.toLocaleString()} USD
+                              </div>
+
+                              {ord.trackingCode && (
+                                <div className="text-xs text-gray-700 font-mono">
+                                  <span className="text-gray-500 block font-sans">Guía Courier / Naviera:</span>
+                                  <span className="font-bold text-[#1b4332]">{ord.courier}: {ord.trackingCode}</span>
+                                </div>
+                              )}
+
+                              {ord.senasaGuide && (
+                                <div className="text-xs text-gray-700 font-mono">
+                                  <span className="text-gray-500 block font-sans">Precinto Fitosanitario:</span>
+                                  <span className="text-[#2d6a4f] font-semibold">{ord.senasaGuide}</span>
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2">
+                                <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
+                                  Ver Lote en Marketplace
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {buyerTab === 'passports' && (
+                  <div>
+                    <h2 className="text-xl font-serif font-bold text-[#1b4332] mb-4">Pasaportes Ambientales EUDR y Fichas Técnicas</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
+                            PORTAL TRACES NT
+                          </span>
+                          <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Pasaporte GeoJSON Polígonos</h3>
+                          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                            Coordenadas poligonales de parcelas para verificación automática en aduanas europeas (Reglamento UE 2023/1115).
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => alert('Descargando archivo vectorial: pasaporte-eudr-poligonos-TA0427.geojson')}
+                          className="mt-4 button button-small button-dark w-full text-xs justify-center"
+                        >
+                          <Download size={14} /> Descargar GeoJSON (.json)
+                        </button>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
+                            ISO/IEC 17025
+                          </span>
+                          <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Certificado Metales & Cadmio</h3>
+                          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                            Ensayo químico acreditado: Cadmio &lt; 0.28 ppm (Límite UE: 0.60 ppm) y Humedad 6.8%.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => alert('Descargando certificado oficial: laboratorio-cadmio-humedad-TA0427.pdf')}
+                          className="mt-4 button button-small button-dark w-full text-xs justify-center"
+                        >
+                          <Download size={14} /> Descargar Certificado (PDF)
+                        </button>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#e8f1ec] text-[#1b4332] font-mono">
+                            SCAA / Q-GRADER
+                          </span>
+                          <h3 className="font-serif font-bold text-[#1b4332] text-lg mt-2">Ficha Técnica Sensorial</h3>
+                          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                            Perfil de cata: 88 Puntos SCAA, descriptores de notas a frutos rojos secos, panela de caña y jazmín silvestre.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => alert('Descargando ficha sensorial: reporte-sensorial-scaa-TA0427.pdf')}
+                          className="mt-4 button button-small button-dark w-full text-xs justify-center"
+                        >
+                          <Download size={14} /> Descargar Ficha Sensorial
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {buyerTab === 'profile' && (
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm max-w-3xl">
+                    <h2 className="text-xl font-serif font-bold text-[#1b4332] mb-1">Perfil Corporativo del Comprador</h2>
+                    <p className="text-xs text-gray-500 mb-6">Datos fiscales e institucionales registrados para emisión de contratos comerciales.</p>
+
+                    <div className="space-y-4 text-xs font-sans">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-gray-500 block">Razón Social</span>
+                          <p className="font-bold text-[#1b4332] text-sm">Valrhona Artisans B2B S.A.S.</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block">Número de Identificación Fiscal (EU VAT / Tax ID)</span>
+                          <p className="font-mono font-bold text-[#1b4332]">FR-84920192</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-gray-500 block">Dirección Corporativa</span>
+                          <p className="text-gray-700">14 Avenue du Président Roosevelt, 26600 Tain-l&apos;Hermitage, Francia</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block">Responsable de Adquisiciones</span>
+                          <p className="text-gray-700">Alexandre Bonnat · procurement@valrhona-artisans.com</p>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 bg-[#faf6f0] rounded-xl border border-[#b07d3b]/30">
+                        <span className="font-bold text-[#956528] block mb-1">Cuenta de Fideicomiso Comercial Escrow</span>
+                        <p className="text-gray-600">
+                          Fondos custodiados bajo garantía Trade Assurance con el Banco de Crédito del Perú (BCP) y Société Générale Paris.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ===================================================================
+                VISTAS DE LA COOPERATIVA PRODUCTORA (VENDEDOR)
+                =================================================================== */}
+            {activeRole === 'seller' && (
+              <>
+                {/* 1. RESUMEN DE VENTAS */}
+                {sellerTab === 'overview' && (
+                  <div>
+                    <div className="b2b-banner">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
+                            Cooperativa Productora · RUC Agrario: {coopProfile.ruc}
+                          </span>
+                          <h1 className="text-2xl sm:text-3xl font-serif">{coopProfile.name}</h1>
+                          <p className="text-sm text-gray-200 mt-1">
+                            {coopProfile.community} · {coopProfile.department}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="px-3 py-1.5 rounded-lg bg-[#b07d3b] text-white text-xs font-bold font-mono">
+                            Gold Supplier Agroforestal
+                          </span>
+                          <span className="px-3 py-1.5 rounded-lg bg-[#112a20] text-emerald-300 text-xs font-semibold border border-emerald-500/30">
+                            Sentinel-2 Verificado (4,250 ha)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="b2b-kpis-grid">
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes en Vitrina</span>
+                          <Store size={18} className="text-[#2d6a4f]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalLotsPublished}</p>
+                        <p className="text-xs text-gray-500 mt-1">Cosechas activas en marketplace</p>
+                      </div>
+
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Stock Disponible</span>
+                          <Layers size={18} className="text-[#b07d3b]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalStockKg.toLocaleString()} kg</p>
+                        <p className="text-xs text-gray-500 mt-1">Almacén Callao y Puerto Maldonado</p>
+                      </div>
+
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Solicitudes RFQ</span>
+                          <Clock size={18} className="text-[#1b4332]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{pendingRfqsCount}</p>
+                        <p className="text-xs text-gray-500 mt-1">Cotizaciones pendientes de respuesta</p>
+                      </div>
+
+                      <div className="b2b-kpi-card">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Ingresos Proyectados</span>
+                          <TrendingUp size={18} className="text-[#2d6a4f]" />
+                        </div>
+                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">$98,400 USD</p>
+                        <p className="text-xs text-gray-500 mt-1">Contratos FOB temporada 2025</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. BANDEJA DE RFQS */}
+                {sellerTab === 'orders' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h2 className="text-xl font-serif font-bold text-[#1b4332]">Bandeja de Solicitudes RFQ y Pedidos de Muestras</h2>
+                        <p className="text-xs text-gray-500">Responde o despacha muestras con compradores internacionales en tiempo real.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {orders.map((ord) => (
+                        <div key={ord.id} className="b2b-order-card" data-testid={`seller-order-${ord.id}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                                  {ord.id}
+                                </span>
+                                <span className="font-bold text-sm text-[#1b4332]">{ord.buyerOrg}</span>
+                                <span className="text-xs text-gray-500">({ord.buyerCountry})</span>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Requerimiento: <b>{ord.lotName}</b> (Lote {ord.lotId}) · Volumen: <b>{ord.requestedKg.toLocaleString()} kg</b> · Fecha: {ord.createdAt}
+                              </p>
+                              {ord.notes && <p className="text-xs italic text-gray-500 mt-0.5">Nota: {ord.notes}</p>}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {ord.status === 'submitted' && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                                  Nueva Solicitud (Acción Requerida)
+                                </span>
+                              )}
+                              {ord.status === 'quoted' && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                                  Cotización Aprobada por Cooperativa
+                                </span>
+                              )}
+                              {ord.status === 'sample_dispatched' && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  Muestra Despachada (SENASA Emitido)
+                                </span>
+                              )}
+                              {ord.status === 'contract_locked' && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+                                  Contrato Cerrado con Escrow Protegido
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="pt-3 flex flex-wrap items-center justify-between gap-3">
+                            <div className="text-xs text-gray-600">
+                              {ord.trackingCode ? (
+                                <span className="font-mono text-[#1b4332]">
+                                  Guía Asignada: <b>{ord.courier} ({ord.trackingCode})</b> · Precinto: <b>{ord.senasaGuide}</b>
+                                </span>
+                              ) : (
+                                <span>Sin despacho físico registrado aún.</span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {ord.status === 'submitted' && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      updateOrderStatus(ord.id, 'quoted');
+                                      showNotice(`Cotización para orden ${ord.id} aprobada con éxito. Notificación enviada al comprador.`);
+                                    }}
+                                    className="b2b-action-btn-green"
+                                    data-testid={`btn-accept-quote-${ord.id}`}
+                                  >
+                                    <Check size={14} /> Aceptar Cotización (RFQ)
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      const tracking = 'DHL-PE-' + Math.floor(1000000 + Math.random() * 9000000);
+                                      const senasa = 'SENASA-MDD-2025-' + Math.floor(1000 + Math.random() * 9000);
+                                      updateOrderStatus(ord.id, 'sample_dispatched', {
+                                        trackingCode: tracking,
+                                        courier: 'DHL Green Express',
+                                        senasaGuide: senasa,
+                                      });
+                                      showNotice(`Muestra despachada para ${ord.buyerOrg}. Guía Courier: ${tracking} y precinto fitosanitario ${senasa}.`);
+                                    }}
+                                    className="b2b-action-btn-brown"
+                                    data-testid={`btn-dispatch-sample-${ord.id}`}
+                                  >
+                                    <Truck size={14} /> Despachar Muestra (Guía SENASA)
+                                  </button>
+                                </>
+                              )}
+
+                              {(ord.status === 'quoted' || ord.status === 'sample_dispatched') && (
+                                <button
+                                  onClick={() => {
+                                    updateOrderStatus(ord.id, 'contract_locked', {
+                                      escrowStatus: 'funded',
+                                      trackingCode: ord.trackingCode || 'HAPAG-LLOYD-FCL-' + Math.floor(1000 + Math.random() * 9000),
+                                      courier: ord.courier || 'Naviera Marítima Callao',
+                                      senasaGuide: ord.senasaGuide || 'SENASA-EXP-2025-9941'
+                                    });
+                                    showNotice(`Contrato comercial formalizado para ${ord.buyerOrg}. Fondos en custodia Escrow asegurados al 100%.`);
+                                  }}
+                                  className="b2b-action-btn-green"
+                                  data-testid={`btn-lock-contract-${ord.id}`}
+                                >
+                                  <ShieldCheck size={14} /> Formalizar Contrato con Escrow
+                                </button>
+                              )}
+
+                              <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
+                                Ver Lote
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. GESTIÓN DE LOTES Y SUBIDA DE FOTOS DE PRODUCTO */}
+                {sellerTab === 'lots' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h2 className="text-xl font-serif font-bold text-[#1b4332]">Gestión de Cosechas & Fotografías de Lotes</h2>
+                        <p className="text-xs text-gray-500">Actualiza las fotografías, stock y condiciones comerciales de tus cosechas activas.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {lots.map((l) => (
+                        <div key={l.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
+                          <div className="relative w-28 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 shrink-0">
+                            <img src={l.image} alt={l.name} className="w-full h-full object-cover" />
+                            <label className="absolute inset-0 bg-black/40 hover:bg-black/60 flex flex-col items-center justify-center text-white cursor-pointer opacity-80 hover:opacity-100 transition-opacity" title="Cambiar fotografía del producto">
+                              <Camera size={18} />
+                              <span className="text-[9px] font-sans font-semibold mt-1">Cambiar Foto</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleProductPhotoUpload(l.id, e)}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="flex-1 min-w-0 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                                {l.id}
+                              </span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#2d6a4f] bg-[#e8f1ec] px-2 py-0.5 rounded">
+                                {l.fruit}
+                              </span>
+                              <span className="text-xs font-semibold text-gray-500">{l.harvestTag}</span>
+                            </div>
+                            <h3 className="font-serif font-bold text-[#1b4332] text-base mt-1">{l.name}</h3>
+                            <p className="text-xs text-gray-600 line-clamp-1">{l.sensoryNotes}</p>
+
+                            <div className="flex flex-wrap items-center gap-4 mt-2 text-xs">
+                              <span className="font-semibold text-emerald-800">
+                                Stock Disp: <b>{l.availableKg.toLocaleString()} kg</b> / Total: {l.totalKg.toLocaleString()} kg
+                              </span>
+                              <span className="font-mono font-bold text-[#1b4332]">
+                                FOB: ${l.priceFob.toFixed(2)} / kg
+                              </span>
+                              <span className="text-gray-500 font-mono">
+                                Calidad: {l.sensoryScore}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+                            <label className="button button-small button-outline text-xs cursor-pointer">
+                              <Upload size={13} /> Subir Foto Lote
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleProductPhotoUpload(l.id, e)}
+                              />
+                            </label>
+                            <Link href={`/lote/${l.id}`} className="button button-small button-dark text-xs">
+                              Ver Ficha Pública
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. PERSONALIZAR PERFIL Y FOTOS DE COOPERATIVA */}
+                {sellerTab === 'customize' && (
+                  <div>
+                    <div className="mb-6">
+                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Personalizar Perfil de Vendedor (Alibaba Gold Supplier)</h2>
+                      <p className="text-xs text-gray-500">Configura la identidad visual, fotografías oficiales y datos comerciales de la cooperativa.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                      {/* FORMULARIO DE PERSONALIZACIÓN */}
+                      <form onSubmit={handleSaveProfile} className="lg:col-span-7 bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+                        {/* Subida de Banner y Logo Oficial */}
+                        <div>
+                          <label className="block text-xs font-bold text-[#1b4332] uppercase tracking-wider mb-2">
+                            Banner de Tienda & Logo Oficial
+                          </label>
+                          <div className="relative h-32 rounded-xl overflow-hidden border border-gray-200 bg-gray-100 mb-3 group">
+                            <img src={coopProfile.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                            <label className="absolute inset-0 bg-black/40 group-hover:bg-black/60 flex items-center justify-center text-white text-xs font-semibold cursor-pointer transition-colors gap-2">
+                              <Camera size={18} /> Cambiar Foto de Cabecera (Banner)
+                              <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} />
+                            </label>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-[#1b4332] bg-white shadow shrink-0 group">
+                              <img src={coopProfile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                              <label className="absolute inset-0 bg-black/40 group-hover:bg-black/60 flex items-center justify-center text-white cursor-pointer transition-colors" title="Cambiar logo oficial">
+                                <Camera size={14} />
+                                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                              </label>
+                            </div>
+                            <div className="text-left">
+                              <span className="text-xs font-bold text-[#1b4332] block">Logotipo / Sello Oficial</span>
+                              <span className="text-[11px] text-gray-500 block">Formato recomendado: JPG o PNG cuadrado (500x500px).</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Foto del Dirigente / Socio Productor */}
+                        <div className="pt-4 border-t border-gray-100">
+                          <label className="block text-xs font-bold text-[#1b4332] uppercase tracking-wider mb-2">
+                            Representante / Dirigente Forestal
+                          </label>
+                          <div className="flex items-center gap-4">
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shrink-0 group">
+                              <img src={coopProfile.leaderImageUrl} alt="Dirigente" className="w-full h-full object-cover" />
+                              <label className="absolute inset-0 bg-black/40 group-hover:bg-black/60 flex items-center justify-center text-white cursor-pointer transition-colors">
+                                <Camera size={14} />
+                                <input type="file" accept="image/*" className="hidden" onChange={handleLeaderImageUpload} />
+                              </label>
+                            </div>
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-gray-500 block">Nombre del Representante</span>
+                                <input
+                                  type="text"
+                                  value={coopProfile.leaderName}
+                                  onChange={(e) => setCoopProfile({ ...coopProfile, leaderName: e.target.value })}
+                                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded font-sans"
+                                />
+                              </div>
+                              <div>
+                                <span className="text-gray-500 block">Cargo Institucional</span>
+                                <input
+                                  type="text"
+                                  value={coopProfile.leaderRole}
+                                  onChange={(e) => setCoopProfile({ ...coopProfile, leaderRole: e.target.value })}
+                                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded font-sans"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Galería de Instalaciones de Beneficio */}
+                        <div className="pt-4 border-t border-gray-100">
+                          <label className="block text-xs font-bold text-[#1b4332] uppercase tracking-wider mb-1">
+                            Fotografías de Instalaciones & Parcelas
+                          </label>
+                          <p className="text-[11px] text-gray-500 mb-2">Exhibe módulos de beneficio, cajones de fermentación y secaderos solares.</p>
+                          <div className="b2b-facility-uploader-grid">
+                            {coopProfile.facilityImages.map((img, idx) => (
+                              <div key={idx} className="b2b-facility-item h-24 group">
+                                <img src={img} alt={`Instalación ${idx + 1}`} className="w-full h-full object-cover" />
+                                <label className="absolute inset-0 bg-black/40 group-hover:bg-black/60 flex flex-col items-center justify-center text-white text-[10px] font-semibold cursor-pointer transition-colors gap-1">
+                                  <Camera size={14} /> Cambiar Foto {idx + 1}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleFacilityImageUpload(idx, e)}
+                                  />
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Datos Generales de la Organización */}
+                        <div className="pt-4 border-t border-gray-100 space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">Nombre Oficial</span>
+                              <input
+                                type="text"
+                                required
+                                value={coopProfile.name}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, name: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">RUC Agrario</span>
+                              <input
+                                type="text"
+                                required
+                                value={coopProfile.ruc}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, ruc: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">Pueblo Originario / Comunidad</span>
+                              <input
+                                type="text"
+                                value={coopProfile.community}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, community: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">Departamento / Región</span>
+                              <input
+                                type="text"
+                                value={coopProfile.department}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, department: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="text-xs">
+                            <span className="text-gray-700 font-semibold block mb-1">Historia Comunitaria & Bioeconomía</span>
+                            <textarea
+                              rows={3}
+                              value={coopProfile.story}
+                              onChange={(e) => setCoopProfile({ ...coopProfile, story: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-sans text-xs leading-relaxed"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">Capacidad Anual (MT/año)</span>
+                              <input
+                                type="number"
+                                value={coopProfile.annualCapacityMt}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, annualCapacityMt: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">Tiempo de Respuesta</span>
+                              <input
+                                type="text"
+                                value={coopProfile.responseTime}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, responseTime: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-sans"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">Teléfono WhatsApp de Contacto</span>
+                              <input
+                                type="text"
+                                value={coopProfile.whatsappPhone}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, whatsappPhone: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-gray-700 font-semibold block mb-1">Correo Electrónico Oficial</span>
+                              <input
+                                type="email"
+                                value={coopProfile.contactEmail}
+                                onChange={(e) => setCoopProfile({ ...coopProfile, contactEmail: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-sans"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="text-xs">
+                            <span className="text-gray-700 font-semibold block mb-1">Cuenta Bancaria de Fideicomiso Escrow (CCI)</span>
+                            <input
+                              type="text"
+                              value={coopProfile.escrowAccount}
+                              onChange={(e) => setCoopProfile({ ...coopProfile, escrowAccount: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="button button-dark w-full justify-center text-sm py-2.5"
+                          data-testid="btn-save-profile"
+                        >
+                          <Save size={16} /> Guardar Cambios en Supabase & Local
+                        </button>
+                      </form>
+
+                      {/* PREVISUALIZACIÓN EN VIVO (LIVE CARD PREVIEW) */}
+                      <div className="lg:col-span-5 sticky top-24">
+                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                          <div className="p-3 bg-[#faf6f0] border-b border-gray-200 flex items-center justify-between">
+                            <span className="text-xs font-bold text-[#1b4332] uppercase tracking-wider">
+                              Vista Previa de tu Tienda en Vivo
+                            </span>
+                            <span className="text-[10px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded">
+                              Alibaba Gold Supplier
+                            </span>
+                          </div>
+
+                          <div className="relative h-28 bg-gray-200">
+                            <img src={coopProfile.bannerUrl} alt="Banner Preview" className="w-full h-full object-cover" />
+                            <div className="absolute -bottom-5 left-4 w-14 h-14 rounded-full border-2 border-white shadow overflow-hidden bg-white">
+                              <img src={coopProfile.avatarUrl} alt="Avatar Preview" className="w-full h-full object-cover" />
+                            </div>
+                          </div>
+
+                          <div className="p-4 pt-7 text-left space-y-3">
+                            <div>
+                              <h3 className="font-serif font-bold text-lg text-[#1b4332]">{coopProfile.name}</h3>
+                              <p className="text-xs text-gray-600">{coopProfile.community} · {coopProfile.department}</p>
+                              <span className="text-[10px] font-mono text-gray-500">RUC: {coopProfile.ruc}</span>
+                            </div>
+
+                            <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">
+                              {coopProfile.story}
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs py-2 border-y border-gray-100">
+                              <div>
+                                <span className="text-[10px] text-gray-400 block uppercase">Capacidad Anual</span>
+                                <span className="font-bold text-[#1b4332]">{coopProfile.annualCapacityMt} MT / año</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-gray-400 block uppercase">Respuesta</span>
+                                <span className="font-bold text-[#2d6a4f]">{coopProfile.responseTime}</span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] text-gray-400 block uppercase mb-1">Certificaciones Oficiales</span>
+                              <div className="flex flex-wrap gap-1">
+                                {coopProfile.certifications.slice(0, 3).map((c, i) => (
+                                  <span key={i} className="text-[10px] bg-[#e8f1ec] text-[#1b4332] px-2 py-0.5 rounded font-medium">
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="pt-2 flex items-center justify-between text-xs text-gray-500 font-mono">
+                              <span>WhatsApp: {coopProfile.whatsappPhone}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. UBICACIÓN SATELITAL Y GEORREFERENCIACIÓN */}
+                {sellerTab === 'location' && (
+                  <div className="max-w-4xl">
+                    <div className="mb-6">
+                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Ubicación Satelital & Georreferenciación NMEA</h2>
+                      <p className="text-xs text-gray-500">
+                        Coordenadas auditadas de la sede comunitaria y centro de acopio para cumplimiento con el Reglamento EUDR (UE 2023/1115).
+                      </p>
+                    </div>
+
+                    <div className="b2b-location-card text-left space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <span className="text-xs font-bold text-gray-700 block mb-1">Latitud Satelital</span>
+                          <input
+                            type="text"
+                            value={coopProfile.latitude}
+                            onChange={(e) => setCoopProfile({ ...coopProfile, latitude: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded font-mono text-xs"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-gray-700 block mb-1">Longitud Satelital</span>
+                          <input
+                            type="text"
+                            value={coopProfile.longitude}
+                            onChange={(e) => setCoopProfile({ ...coopProfile, longitude: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded font-mono text-xs"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-gray-700 block mb-1">Precisión NMEA</span>
+                          <input
+                            type="text"
+                            value={coopProfile.gpsAccuracy}
+                            onChange={(e) => setCoopProfile({ ...coopProfile, gpsAccuracy: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded font-mono text-xs bg-gray-50"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleAutoCaptureGps}
+                          className="button button-earth text-xs"
+                          data-testid="btn-auto-gps"
+                        >
+                          <LocateFixed size={14} /> Auto-capturar Coordenadas GNSS en Parcela
+                        </button>
+
+                        <a
+                          href={`https://www.openstreetmap.org/?mlat=${coopProfile.latitude}&mlon=${coopProfile.longitude}#map=14/${coopProfile.latitude}/${coopProfile.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="button button-outline text-xs"
+                        >
+                          <Navigation size={14} /> Abrir en OpenStreetMap en Vivo <ExternalLink size={12} />
+                        </a>
+                      </div>
+
+                      <div className="p-4 bg-[#faf6f0] rounded-xl border border-gray-200">
+                        <span className="text-xs font-bold text-[#1b4332] block mb-1">
+                          Validación Territorial PostGIS:
+                        </span>
+                        <p className="text-xs text-gray-600 leading-relaxed font-sans">
+                          Sede comunitaria georreferenciada en <b>{coopProfile.community}</b> ({coopProfile.latitude}°, {coopProfile.longitude}°). 
+                          Cero pérdida de cobertura boscosa comprobada en Sentinel-2 desde la fecha de corte regulatoria del 31 de diciembre de 2020.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. AUDITORÍA SENTINEL-2 */}
+                {sellerTab === 'satellite' && (
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-left">
+                    <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-lg font-serif font-bold text-[#1b4332]">Gobernanza Territorial y Custodia Satelital</h3>
+                        <p className="text-xs text-gray-500">Monitoreo continuo de concesiones y parcelas comunales de la Asociación Bosque Vivo.</p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Cero Alertas GLAD 2024-2025
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                      <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Territorio Custodiado</span>
+                        <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">4,250 Hectáreas</p>
+                        <p className="text-[11px] text-gray-600 mt-1">Bosque primario húmedo tropical</p>
+                      </div>
+
+                      <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Salud del Dosel (NDVI)</span>
+                        <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">0.89 Promedio</p>
+                        <p className="text-[11px] text-gray-600 mt-1">Sentinel-2 (ESA) actualizado semanalmente</p>
+                      </div>
+
+                      <div className="p-3.5 rounded-lg bg-[#faf6f0] border border-gray-200 text-left">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Resolución Oficial</span>
+                        <p className="text-xl font-bold font-serif text-[#1b4332] mt-0.5">SERFOR-MDD-042</p>
+                        <p className="text-[11px] text-gray-600 mt-1">Concesión forestal no maderable vigente</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 7. CONSOLA SUPABASE Y SCRIPT SQL */}
+                {sellerTab === 'supabase' && (
+                  <div className="max-w-4xl text-left space-y-6">
+                    <div>
+                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Consola de Integración Supabase Cloud</h2>
+                      <p className="text-xs text-gray-500">
+                        Credenciales y script DDL de producción para inicializar las tablas en tu proyecto de Supabase.
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                        <div>
+                          <span className="text-gray-500 block font-sans">Endpoint del Proyecto</span>
+                          <span className="font-bold text-[#1b4332]">{SUPABASE_URL}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block font-sans">Identificador de Proyecto (Ref)</span>
+                          <span className="font-bold text-[#2d6a4f]">yaxjpdhqjqsfqhladhl</span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-[#e8f1ec] text-[#1b4332] text-xs flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-[#2d6a4f]" />
+                          <span>Conexión híbrida activa (Supabase REST + LocalStorage Fallback Resiliente).</span>
+                        </div>
+                        <span className="font-bold font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-[#2d6a4f]/20">
+                          PRODUCCIÓN READY
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-bold text-[#1b4332]">Script DDL SQL de Estructura de Tablas</h3>
+                          <p className="text-xs text-gray-500">Copia este código y ejecútalo en el SQL Editor de tu consola de Supabase.</p>
+                        </div>
+                        <button
+                          onClick={handleCopySql}
+                          className="button button-small button-dark text-xs flex items-center gap-1.5"
+                          data-testid="btn-copy-sql"
+                        >
+                          {sqlCopied ? <Check size={14} /> : <Copy size={14} />}
+                          {sqlCopied ? '¡Copiado!' : 'Copiar Script SQL'}
+                        </button>
+                      </div>
+
+                      <pre className="b2b-sql-box">
+                        <code>{getSupabaseSchemaSql()}</code>
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <Footer />
