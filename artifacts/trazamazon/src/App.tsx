@@ -6,35 +6,49 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from 'wouter';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, Calendar, Check, CheckCircle2,
-  ChevronDown, CircleDot, Clock, Cloud, CloudOff, CloudUpload, Coffee, Compass, Download,
-  Eye, Filter, Globe2, Handshake, Heart, Info, Layers, Leaf, LocateFixed, MapPin, Menu,
-  Minus, PackageCheck, Plus, QrCode, RefreshCw, Search, Send, ShieldCheck, Smartphone,
-  Sparkles, Sprout, TreePine, Upload, Wifi, WifiOff, X
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, Check, CheckCircle2,
+  ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
+  Coffee, Compass, Download, Eye, FileText, Filter, Globe2, Handshake, Heart, Info,
+  Layers, LayoutGrid, Leaf, List, LocateFixed, MapPin, Menu, Minus, PackageCheck,
+  Plus, QrCode, RefreshCw, Search, Send, ShieldCheck, Ship, SlidersHorizontal,
+  Smartphone, Sprout, TreePine, Truck, Upload, Wifi, WifiOff, X
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
 
 /**
- * Entidad de Lote de Producto Agrícola Amazónico
+ * Entidad de Lote de Producto Agrícola Mayorista B2B
  */
 export type ProductLot = {
   id: string;
-  fruit: 'Cacao' | 'Café' | 'Castaña' | 'Aguaje';
+  fruit: 'Cacao' | 'Café' | 'Castaña' | 'Aguaje' | 'Copoazú';
   name: string;
   cooperative: string;
   region: string;
-  price: number;
-  minimumVolume: number;
+  community: string;
+  priceFob: number;
+  unit: string;
+  minimumMoq: string;
+  availableKg: number;
+  totalKg: number;
+  dispatchStatus: string;
+  harvestTag: string;
   certifications: string[];
   image: string;
   harvestDate: string;
   farmerName: string;
   farmerImage: string;
   coordinates: string;
+  sensoryScore: string;
+  specs: {
+    k1: string; v1: string;
+    k2: string; v2: string;
+    k3: string; v3: string;
+  };
+  sensoryNotes: string;
   story: string;
   ndviScore: number;
-  lotHash?: string;
+  lotHash: string;
 };
 
 /**
@@ -52,85 +66,199 @@ export type LocalHarvestRecord = {
 };
 
 /**
- * Catálogo maestro de lotes amazónicos verificados
+ * Catálogo Maestro B2B de Cosechas Vivas (Canopy & Provenance)
  */
-const initialLots: ProductLot[] = [
+export const initialLots: ProductLot[] = [
   {
     id: 'TA-0427',
     fruit: 'Cacao',
-    name: 'Cacao Nativo Chuncho · Aroma Fino',
+    name: 'Cacao Nativo Criollo de Aroma Fino',
     cooperative: 'Asociación Bosque Vivo',
+    community: 'Boca Pariamanu · Pueblo Amahuaca',
     region: 'Madre de Dios',
-    price: 8.5,
-    minimumVolume: 500,
-    certifications: ['Sin deforestación', 'Orgánico', 'Satélite Validado'],
+    priceFob: 8.40,
+    unit: 'USD / kg FOB Callao',
+    minimumMoq: 'MOQ: 500 kg (Sacos GrainPro 60kg)',
+    availableKg: 1800,
+    totalKg: 3200,
+    dispatchStatus: 'Listo en Puerto',
+    harvestTag: 'Cosecha Mayo 2025',
+    certifications: ['Cero Deforestación', 'QR Satelital', 'Criollo Nativo'],
     image: `${import.meta.env.BASE_URL}amazon-cacao-hero.jpg`,
-    harvestDate: '18 May 2027',
+    harvestDate: '18 May 2025',
     farmerName: 'María Quispe',
     farmerImage: `${import.meta.env.BASE_URL}producer-maria-illustration.jpg`,
-    coordinates: '12°35′24″ S · 69°11′42″ W',
+    coordinates: "12° 28' S, 69° 12' W",
+    sensoryScore: '88 Pts SCAA',
+    specs: {
+      k1: 'Humedad', v1: '6.8%',
+      k2: 'Fermentación', v2: '84%',
+      k3: 'Altitud', v3: '260 msnm'
+    },
+    sensoryNotes: 'Cacao profundo, notas de frutos rojos secos, panela de caña y jazmín silvestre.',
+    story: 'Cultivado bajo dosel primario de castañales y shihuahuacos en Pariamanu. Fermentado en cajones de madera nativa que acentúan notas florales y frutales.',
     ndviScore: 0.89,
-    story: 'Cultivado bajo dosel primario de castañales y shihuahuacos en Pariamanu. Fermentado en cajas de madera nativa que acentúan notas a ciruela y flores silvestres.',
     lotHash: '0x7e4a18f9c21b38e0'
   },
   {
     id: 'TA-0319',
     fruit: 'Café',
-    name: 'Café de Sombra Geisha · Lavado',
-    cooperative: 'Cooperativa Alto Tambopata',
+    name: 'Café de Sombra Altura · Lavado Anaeróbico',
+    cooperative: 'Coop. Agraria Cafetalera San Juan del Oro',
+    community: 'Alto Tambopata · Valle de Sandia',
     region: 'Puno',
-    price: 11.2,
-    minimumVolume: 300,
-    certifications: ['Sin deforestación', 'Orgánico', 'Comercio justo'],
+    priceFob: 11.20,
+    unit: 'USD / kg FOB Callao',
+    minimumMoq: 'MOQ: 300 kg (Sacos de yute con GrainPro)',
+    availableKg: 2100,
+    totalKg: 4500,
+    dispatchStatus: 'Almacén Lima',
+    harvestTag: 'Disponible',
+    certifications: ['Geisha & Typica', 'Orgánico USDA/EU', 'Lavado 48h'],
     image: `${import.meta.env.BASE_URL}coffee.jpg`,
-    harvestDate: '02 Jun 2027',
+    harvestDate: '02 Jun 2025',
     farmerName: 'Luis Mamani',
     farmerImage: `${import.meta.env.BASE_URL}producer-maria-illustration.jpg`,
-    coordinates: '13°06′15″ S · 69°36′08″ W',
+    coordinates: "14° 19' S, 69° 25' W",
+    sensoryScore: '87.5 Pts SCA',
+    specs: {
+      k1: 'Altitud', v1: '1,750 msnm',
+      k2: 'Humedad', v2: '10.5%',
+      k3: 'Proceso', v3: 'Bajo dosel'
+    },
+    sensoryNotes: 'Flor de azahar, mandarina andina madura, caña dulce y miel de abeja melipona nativa.',
+    story: 'Madurado lentamente bajo sombra de árboles nativos de pacae y nogal en las laderas de Sandia. Cosechado a mano grano por grano.',
     ndviScore: 0.92,
-    story: 'Madurado a 1,650 msnm bajo sombra de pacae y nogales. Proceso de lavado artesanal con agua de deshielo y secado en camas africanas.',
     lotHash: '0x3c9d74a10e82f5b6'
   },
   {
     id: 'TA-0186',
     fruit: 'Castaña',
-    name: 'Castaña Amazónica Silvestre Seleccionada',
-    cooperative: 'Recolectores de Tambopata',
+    name: 'Castaña Amazónica Silvestre Pelada',
+    cooperative: 'Madre de Dios Castañeros',
+    community: 'Cuenca del Río Las Piedras · Tahuamanu',
     region: 'Madre de Dios',
-    price: 6.8,
-    minimumVolume: 250,
-    certifications: ['Sin deforestación', 'Comunidad forestal'],
+    priceFob: 6.75,
+    unit: 'USD / kg FOB Callao',
+    minimumMoq: 'MOQ: 250 kg (Cajas al vacío 20kg con N2)',
+    availableKg: 4500,
+    totalKg: 8000,
+    dispatchStatus: 'Despacho Inmediato',
+    harvestTag: '100% Silvestre',
+    certifications: ['Aflatoxinas < 2 ppb', 'Comercio Ético', 'Selección Manual'],
     image: `${import.meta.env.BASE_URL}nuts.jpg`,
-    harvestDate: '11 Abr 2027',
+    harvestDate: '11 Abr 2025',
     farmerName: 'Elena Huamán',
     farmerImage: `${import.meta.env.BASE_URL}producer-maria-portrait.jpg`,
-    coordinates: '12°49′50″ S · 69°18′33″ W',
+    coordinates: "11° 45' S, 69° 40' W",
+    sensoryScore: '2,400 Árboles GPS',
+    specs: {
+      k1: 'Calibre', v1: 'Med/Lrg (90-110)',
+      k2: 'Humedad', v2: '4.2%',
+      k3: 'Empaque', v3: 'Vacío N2'
+    },
+    sensoryNotes: 'Textura crocante, sabor mantecoso puro, sin amargor. Altamente rica en selenio orgánico natural.',
+    story: 'Recolectada en concesiones familiares de bosque primario sin tala. Cada coco cae naturalmente de los árboles de Bertholletia excelsa.',
     ndviScore: 0.95,
-    story: 'Recolectada a mano en concesiones de bosque primario sin tala. Cada coco de castaña cae libremente y su aprovechamiento protege 1,200 hectáreas de selva virgen.',
     lotHash: '0x992b41f802ca3e77'
   },
   {
-    id: 'TA-0274',
+    id: 'TA-0512',
+    fruit: 'Copoazú',
+    name: 'Copoazú Silvestre Deshidratado en Frío',
+    cooperative: 'Familias Guardianas de Palma Real',
+    community: 'Comunidad Palma Real · Pueblo Ese Eja',
+    region: 'Madre de Dios',
+    priceFob: 14.50,
+    unit: 'USD / kg FOB Callao',
+    minimumMoq: 'MOQ: 100 kg (Bolsas barrera aluminizada 5kg)',
+    availableKg: 800,
+    totalKg: 1500,
+    dispatchStatus: 'Despacho 72h',
+    harvestTag: 'Superfruto',
+    certifications: ['Liofilizado en frío', 'Pueblo Ese Eja', 'Sin Azúcar'],
+    image: `${import.meta.env.BASE_URL}amazon-parcel-map.jpg`,
+    harvestDate: '04 May 2025',
+    farmerName: 'Mateo Mishaja',
+    farmerImage: `${import.meta.env.BASE_URL}producer-maria-portrait.jpg`,
+    coordinates: "12° 34' S, 69° 01' W",
+    sensoryScore: 'Polifenoles 1,420mg',
+    specs: {
+      k1: 'Formato', v1: 'Hojuelas',
+      k2: 'Humedad', v2: '3.5%',
+      k3: 'Grado', v3: 'Nutracéutico'
+    },
+    sensoryNotes: 'Sabor cítrico frutal único similar al cacao blanco con notas de piña silvestre y maracuyá.',
+    story: 'Cosechado en el sotobosque amazónico por familias Ese Eja. Liofilizado a baja temperatura para preservar bioactivos.',
+    ndviScore: 0.94,
+    lotHash: '0x44c1a78e129b803f'
+  },
+  {
+    id: 'TA-0244',
+    fruit: 'Cacao',
+    name: 'Cacao Chuncho Nativo de Selva Alta',
+    cooperative: 'Red de Productores Chuncho Ancestral',
+    community: 'Quillabamba · Valle Urubamba',
+    region: 'Cusco',
+    priceFob: 16.00,
+    unit: 'USD / kg FOB Callao',
+    minimumMoq: 'MOQ: 100 kg (Cajas especiales herméticas 25kg)',
+    availableKg: 400,
+    totalKg: 950,
+    dispatchStatus: 'Últimos sacos',
+    harvestTag: 'Rare Reserve',
+    certifications: ['Genética Pura Chuncho', 'Microlote', 'Cajón Laurel'],
+    image: `${import.meta.env.BASE_URL}amazon-cacao-hero.jpg`,
+    harvestDate: '15 May 2025',
+    farmerName: 'Esteban Ccora',
+    farmerImage: `${import.meta.env.BASE_URL}producer-maria-illustration.jpg`,
+    coordinates: "12° 51' S, 72° 41' W",
+    sensoryScore: '91 Pts Sensorial',
+    specs: {
+      k1: 'Humedad', v1: '6.5%',
+      k2: 'Grasa Nat.', v2: '54.2%',
+      k3: 'Cata', v3: 'Chocolatier'
+    },
+    sensoryNotes: 'Manteca sedosa inigualable, maracuyá maduro, nibs florales y final prolongado a cacao fino.',
+    story: 'Genética ancestral Chuncho preservada en parcelas agroforestales de selva alta. Considerado uno de los cacaos más finos del planeta.',
+    ndviScore: 0.91,
+    lotHash: '0x55d098ef31a29810'
+  },
+  {
+    id: 'TA-0601',
     fruit: 'Aguaje',
-    name: 'Aguaje Silvestre de Palmera en Pie',
-    cooperative: 'Comunidad Nativa Tres Islas',
-    region: 'Loreto',
-    price: 4.9,
-    minimumVolume: 200,
-    certifications: ['Sin deforestación', 'Comunidad forestal', 'Satélite Validado'],
+    name: 'Aceite Virgen de Aguaje (Mauritia flexuosa)',
+    cooperative: 'Asoc. de Mujeres Colectoras del Aguajal',
+    community: 'Comunidad Bélgica · Cuenca Ucayali',
+    region: 'Ucayali',
+    priceFob: 28.00,
+    unit: 'USD / Litro FOB Callao',
+    minimumMoq: 'MOQ: 50 L (Tambos alimentarios con precinto)',
+    availableKg: 650,
+    totalKg: 1200,
+    dispatchStatus: 'Disponible',
+    harvestTag: 'Sin Tala de Palmera',
+    certifications: ['Prensado Mecánico', 'Alto Beta-caroteno', 'Cosmético/Pharma'],
     image: `${import.meta.env.BASE_URL}aguaje.jpg`,
-    harvestDate: '26 May 2027',
+    harvestDate: '26 May 2025',
     farmerName: 'Rosa Soria',
     farmerImage: `${import.meta.env.BASE_URL}producer-maria-portrait.jpg`,
-    coordinates: '04°13′11″ S · 73°16′45″ W',
-    ndviScore: 0.91,
-    story: 'Cosechado mediante arneses de ascenso vertical sin talar la palmera aguaje hembra. Protege el ecosistema de aguajales, el mayor sumidero de carbono de la Amazonía.',
+    coordinates: "08° 23' S, 74° 31' W",
+    sensoryScore: '100% Virgen',
+    specs: {
+      k1: 'Acidez Libre', v1: '< 0.8%',
+      k2: 'Peróxidos', v2: '< 3 meq/kg',
+      k3: 'Vit. A Act.', v3: 'Natural'
+    },
+    sensoryNotes: 'Extracción sin solventes químicos. Color naranja rubí intenso, rico en ácido oleico y tocoferoles.',
+    story: 'Cosechado mediante arneses de ascenso vertical sin talar la palmera hembra. Protege el ecosistema de aguajales y turberas.',
+    ndviScore: 0.93,
     lotHash: '0x15f7c32a9d846e20'
   }
 ];
 
 /**
- * Carga registros persistidos en el almacenamiento local del navegador
+ * Carga registros persistidos en caché local
  */
 function loadLocalRecords(): LocalHarvestRecord[] {
   try {
@@ -141,13 +269,12 @@ function loadLocalRecords(): LocalHarvestRecord[] {
   } catch (error) {
     console.error('Error al leer registros locales de cosecha:', error);
   }
-  // Registros de muestra precargados para la demostración
   return [
     {
       id: 'HR-849102',
       fruit: 'Cacao',
       estimatedKg: 185.5,
-      coordinates: '12°35′24″ S, 69°11′42″ W',
+      coordinates: "12° 28' S, 69° 12' W",
       photoPreview: '',
       createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
       syncStatus: 'pending'
@@ -156,7 +283,7 @@ function loadLocalRecords(): LocalHarvestRecord[] {
       id: 'HR-849089',
       fruit: 'Café',
       estimatedKg: 92.0,
-      coordinates: '13°06′15″ S, 69°36′08″ W',
+      coordinates: "14° 19' S, 69° 25' W",
       photoPreview: '',
       createdAt: new Date(Date.now() - 3600000 * 18).toISOString(),
       syncStatus: 'synced',
@@ -166,7 +293,7 @@ function loadLocalRecords(): LocalHarvestRecord[] {
       id: 'HR-848911',
       fruit: 'Castaña',
       estimatedKg: 240.0,
-      coordinates: '12°49′50″ S, 69°18′33″ W',
+      coordinates: "11° 45' S, 69° 40' W",
       photoPreview: '',
       createdAt: new Date(Date.now() - 3600000 * 36).toISOString(),
       syncStatus: 'synced',
@@ -176,16 +303,13 @@ function loadLocalRecords(): LocalHarvestRecord[] {
 }
 
 /**
- * Barra Flotante Global de Demostración para evaluación rápida del prototipo
+ * Barra Flotante Global de Demostración (Clean Production Navigator)
  */
 function PrototypeFloatingNav() {
   const [location] = useLocation();
 
   return (
-    <nav className="floating-prototype-nav" aria-label="Navegación Rápida del Prototipo">
-      <span className="nav-pill-badge" title="Impact Startup Competition 2027">
-        <Sparkles size={11} /> Impact 2027
-      </span>
+    <nav className="floating-prototype-nav" aria-label="Navegación Rápida">
       <Link
         href="/marketplace"
         className={`nav-pill-item ${location === '/' || location === '/marketplace' ? 'active' : ''}`}
@@ -250,10 +374,10 @@ function Header({ active }: { active?: string }) {
         </nav>
         <div className="header-actions">
           <span className="header-note">
-            <span className="live-dot" /> Trazabilidad Satelital Activa
+            <span className="live-dot" /> Trazabilidad Satelital · EUDR Ready
           </span>
           <Link href="/marketplace" className="button button-dark button-small" data-testid="button-source">
-            Explorar Lotes <ArrowUpRight size={15} />
+            Explorar Catálogo <ArrowUpRight size={15} />
           </Link>
         </div>
         <button
@@ -298,7 +422,7 @@ function Footer() {
         </div>
         <div className="footer-links">
           <Link href="/marketplace" data-testid="footer-marketplace">
-            Marketplace B2B
+            Catálogo Mayorista B2B
           </Link>
           <Link href="/lote/TA-0427" data-testid="footer-qr">
             Visor Trazabilidad QR
@@ -306,14 +430,14 @@ function Footer() {
           <Link href="/app" data-testid="footer-field-app">
             App de Campo Offline
           </Link>
-          <a href="mailto:contacto@trazamazon.org">Contacto Cooperativas</a>
+          <a href="mailto:abastecimiento@trazamazon.org">Mesa de Abastecimiento Directo</a>
         </div>
         <div className="footer-place">
-          <MapPin size={15} /> Puerto Maldonado · Madre de Dios, Perú
+          <MapPin size={15} /> Madre de Dios · Puno · Ucayali, Perú
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© 2027 TrazAmazon · Desafío Amazonía Viva · Impact Startup Competition</span>
+        <span>© 2025 TrazAmazon · Plataforma de Trazabilidad Agrícola y Marketplace B2B</span>
         <span>Acreditación Cero Deforestación vía Sentinel-2 / PostGIS</span>
       </div>
     </footer>
@@ -321,79 +445,14 @@ function Footer() {
 }
 
 /**
- * Etiqueta de Certificación Ambiental
+ * Modal Interactivo para Solicitar Muestra Técnica o Cotización B2B
  */
-function Tag({ children, earth = false }: { children: ReactNode; earth?: boolean }) {
-  return <span className={`tag ${earth ? 'tag-earth' : ''}`}>{children}</span>;
-}
-
-/**
- * Tarjeta de Producto B2B con Acciones Duales: Trazabilidad QR y Cotización
- */
-function ProductCard({ lot, onQuote }: { lot: ProductLot; onQuote: (lot: ProductLot) => void }) {
-  return (
-    <article className="product-card" data-testid={`card-product-${lot.id}`}>
-      <Link href={`/lote/${lot.id}`} className="product-photo-link" data-testid={`link-lot-${lot.id}`}>
-        <img className="product-image" src={lot.image} alt={lot.name} loading="lazy" />
-        <span className="photo-label">
-          <CircleDot size={12} /> Lote {lot.id}
-        </span>
-        <span className="photo-arrow">
-          <ArrowUpRight size={17} />
-        </span>
-      </Link>
-      <div className="product-info">
-        <div className="product-kicker">
-          {lot.fruit}
-          <span>·</span>
-          {lot.region}
-        </div>
-        <Link href={`/lote/${lot.id}`} className="product-name" data-testid={`link-product-name-${lot.id}`}>
-          {lot.name}
-        </Link>
-        <div className="product-coop">
-          <span className="coop-mark">{lot.cooperative.slice(0, 1)}</span>
-          {lot.cooperative}
-        </div>
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {lot.certifications.map((c) => (
-            <span key={c} className="text-[9px] px-1.5 py-0.5 rounded bg-[#e8eee4] text-[#2d6a4f] font-semibold flex items-center gap-1">
-              <ShieldCheck size={10} /> {c}
-            </span>
-          ))}
-        </div>
-        <div className="product-foot">
-          <div>
-            <strong>${lot.price.toFixed(2)}</strong>
-            <span>/ kg · min. {lot.minimumVolume} kg</span>
-          </div>
-          <div className="product-card-actions">
-            <Link href={`/lote/${lot.id}`} className="btn-card-trace" title="Ver trazabilidad satelital y QR">
-              <QrCode size={13} /> Trazabilidad
-            </Link>
-            <button
-              className="btn-card-quote"
-              title="Solicitar cotización"
-              onClick={() => onQuote(lot)}
-              data-testid={`button-quote-${lot.id}`}
-            >
-              <Send size={12} /> Cotizar
-            </button>
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-/**
- * Modal Interactivo para Solicitar Cotización B2B
- */
-function QuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: () => void }) {
+function SampleQuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: () => void }) {
   const [sent, setSent] = useState(false);
   const [buyerName, setBuyerName] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
-  const [volume, setVolume] = useState('500–2.000 kg');
+  const [company, setCompany] = useState('');
+  const [requestType, setRequestType] = useState('Muestra Técnica (500g)');
 
   useEffect(() => {
     setSent(false);
@@ -409,7 +468,7 @@ function QuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: () => 
   return (
     <div className="modal-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="quote-title">
-        <button className="modal-close" onClick={onClose} aria-label="Cerrar cotización" data-testid="button-close-quote">
+        <button className="modal-close" onClick={onClose} aria-label="Cerrar ventana" data-testid="button-close-quote">
           <X size={19} />
         </button>
         {sent ? (
@@ -417,11 +476,11 @@ function QuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: () => 
             <span className="success-icon">
               <Check size={25} />
             </span>
-            <p className="eyebrow">Solicitud Enviada a la Cooperativa</p>
-            <h2 className="serif">Conexión Directa Establecida</h2>
+            <p className="eyebrow">Solicitud B2B Registrada</p>
+            <h2 className="serif">Muestra en Camino</h2>
             <p>
-              Hemos canalizado tu interés por el lote <b>{lot.id} ({lot.name})</b> a <b>{lot.cooperative}</b>.
-              El equipo de comercialización confirmará la disponibilidad y el certificado de Cero Deforestación.
+              Hemos enviado tu solicitud para el lote <b>{lot.id} · {lot.name}</b> a la cooperativa <b>{lot.cooperative}</b>.
+              El envío se gestionará vía DHL Green Express con certificado fitosanitario SENASA emitido.
             </p>
             <button className="button button-dark" onClick={onClose} data-testid="button-done-quote">
               Volver al Catálogo <ArrowRight size={16} />
@@ -429,20 +488,43 @@ function QuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: () => 
           </div>
         ) : (
           <>
-            <p className="eyebrow">Marketplace B2B Directo</p>
-            <h2 id="quote-title" className="serif">Solicitar Cotización</h2>
+            <p className="eyebrow">Muestreo y Cotización Corporativa</p>
+            <h2 id="quote-title" className="serif">Solicitar Muestra / Cotizar</h2>
             <p className="modal-intro">
-              Conexión directa con {lot.cooperative} para el lote {lot.id}. Precio base: ${lot.price.toFixed(2)}/kg.
+              Lote <b>{lot.id}</b> ({lot.name}). Precio base: <b>${lot.priceFob.toFixed(2)} {lot.unit}</b>.
             </p>
             <form onSubmit={handleSubmit} className="quote-form">
               <label>
-                Nombre del Comprador / Empresa
+                Tipo de Requerimiento
+                <select
+                  value={requestType}
+                  onChange={(e) => setRequestType(e.target.value)}
+                  data-testid="select-request-type"
+                >
+                  <option value="Muestra Técnica (500g)">Muestra Técnica de Laboratorio (500g)</option>
+                  <option value="Cotización por Pallet (500 - 2,000 kg)">Cotización por Pallet (500 - 2,000 kg)</option>
+                  <option value="Contenedor Completo (FCL 10t+)">Contenedor Completo (FCL 10t+)</option>
+                  <option value="Reserva Pre-cosecha Forward">Reserva Pre-cosecha Forward</option>
+                </select>
+              </label>
+              <label>
+                Nombre del Responsable de Compras
                 <input
                   required
-                  placeholder="Ej. Chocolatería Artesanal S.A."
+                  placeholder="Ej. Sofía Valenzuela"
                   value={buyerName}
                   onChange={(e) => setBuyerName(e.target.value)}
                   data-testid="input-quote-name"
+                />
+              </label>
+              <label>
+                Empresa / Tostaduría / Chocolatería
+                <input
+                  required
+                  placeholder="Ej. Casa Cacao Gourmet B.V."
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  data-testid="input-quote-company"
                 />
               </label>
               <label>
@@ -456,21 +538,8 @@ function QuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: () => 
                   data-testid="input-quote-email"
                 />
               </label>
-              <label>
-                Volumen Requerido
-                <select
-                  value={volume}
-                  onChange={(e) => setVolume(e.target.value)}
-                  data-testid="select-quote-volume"
-                >
-                  <option value="500 kg (Volumen de prueba)">500 kg (Volumen de prueba)</option>
-                  <option value="500–2.000 kg">500–2.000 kg</option>
-                  <option value="2.000–10.000 kg">2.000–10.000 kg</option>
-                  <option value="Contenedor completo (18+ Toneladas)">Contenedor completo (18+ Toneladas)</option>
-                </select>
-              </label>
-              <button className="button button-dark button-wide" type="submit" data-testid="button-submit-quote">
-                Enviar Solicitud a Origen <Send size={15} />
+              <button className="button button-earth button-wide" type="submit" data-testid="button-submit-quote">
+                Confirmar Solicitud con Cooperativa <Send size={15} />
               </button>
             </form>
           </>
@@ -484,7 +553,7 @@ function QuoteDialog({ lot, onClose }: { lot: ProductLot | null; onClose: () => 
  * VISTA 1: Landing Page Principal
  */
 function Home() {
-  const [quote, setQuote] = useState<ProductLot | null>(null);
+  const [selectedLot, setSelectedLot] = useState<ProductLot | null>(null);
 
   return (
     <main className="grain">
@@ -495,7 +564,7 @@ function Home() {
       <section className="hero">
         <div className="hero-content page-in">
           <div className="eyebrow hero-eyebrow">
-            <span className="eyebrow-line" /> IMPACT STARTUP COMPETITION 2027 · AMAZONÍA VIVA
+            <span className="eyebrow-line" /> TRAZABILIDAD SATELITAL · CUMPLIMIENTO EUDR
           </div>
           <h1 className="serif">
             Comercio justo.<br />
@@ -507,7 +576,7 @@ function Home() {
           </p>
           <div className="hero-cta">
             <Link href="/marketplace" className="button button-earth" data-testid="button-explore-lots">
-              Explorar Marketplace B2B <ArrowRight size={16} />
+              Explorar Catálogo Mayorista <ArrowRight size={16} />
             </Link>
             <Link href="/app" className="button button-dark" data-testid="button-try-app">
               <Smartphone size={15} /> Probar App de Campo Offline
@@ -521,9 +590,9 @@ function Home() {
               <span>RS</span>
             </div>
             <p>
-              <strong>4 Cooperativas Pioneras</strong>
+              <strong>7 Comunidades Indígenas y Concesiones</strong>
               <br />
-              Trazabilidad satelital sin intermediarios
+              Monitoreo satelital continuo Sentinel-2 & Planet
             </p>
           </div>
         </div>
@@ -542,20 +611,20 @@ function Home() {
           </div>
         </div>
         <div className="hero-side-note">
-          TRAZABILIDAD SATELITAL <span>·</span> 12°35′ S / 69°11′ W
+          TRAZABILIDAD SATELITAL <span>·</span> 12° 28' S / 69° 12' W
         </div>
       </section>
 
       {/* Ticker de Productos y Bioeconomía */}
       <section className="ticker" aria-label="Líneas de producción amazónica">
         <div className="ticker-inner">
-          <span>BIOECONOMÍA AMAZÓNICA CIRCULAR</span>
-          <i /> CACAO NATIVO
-          <i /> CAFÉ DE SOMBRA
-          <i /> CASTAÑA SILVESTRE
-          <i /> AGUAJE DE PALMERA VIVA
-          <i /> RUTAS DE AGROTURISMO COMUNITARIO
-          <i /> ACREDITACIÓN SENTINEL-2
+          <span>CATÁLOGO MAYORISTA DE COSECHAS VIVAS</span>
+          <i /> CACAO NATIVO CRIOLLO Y CHUNCHO
+          <i /> CAFÉ DE SOMBRA ESPECIAL
+          <i /> CASTAÑA SILVESTRE RECOLECTADA
+          <i /> ACEITE VIRGEN DE AGUAJE
+          <i /> COPOAZÚ LIOFILIZADO
+          <i /> DILIGENCIA REGLAMENTO EUDR
         </div>
       </section>
 
@@ -569,12 +638,88 @@ function Home() {
             </h2>
           </div>
           <Link href="/marketplace" className="text-link" data-testid="link-view-marketplace">
-            Ver catálogo completo ({initialLots.length} lotes) <ArrowRight size={15} />
+            Ver catálogo B2B completo ({initialLots.length} lotes) <ArrowRight size={15} />
           </Link>
         </div>
-        <div className="product-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {initialLots.slice(0, 3).map((lot) => (
-            <ProductCard key={lot.id} lot={lot} onQuote={setQuote} />
+            <article key={lot.id} className="b2b-lot-card-pro">
+              <div className="b2b-card-image-wrap">
+                <img src={lot.image} alt={lot.name} loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-bold">
+                  <span className="px-2 py-0.5 bg-white/90 text-[#001208] rounded-full uppercase tracking-wider">
+                    Lote {lot.id}
+                  </span>
+                  <span className="px-2 py-0.5 bg-[#2a7a4c] text-white rounded-full uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
+                    {lot.harvestTag}
+                  </span>
+                </div>
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-mono">
+                  <span className="flex items-center gap-1">
+                    <MapPin size={11} className="text-amber-400" /> {lot.coordinates}
+                  </span>
+                  <span className="bg-[#1b4332]/90 px-1.5 py-0.5 rounded text-[10px] font-semibold text-emerald-200">
+                    {lot.sensoryScore}
+                  </span>
+                </div>
+              </div>
+              <div className="b2b-card-content">
+                <div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {lot.certifications.map((c) => (
+                      <span key={c} className="text-[9px] px-2 py-0.5 bg-[#f5f4ef] text-[#424843] rounded font-semibold uppercase">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                  <h3 className="font-newsreader text-xl font-medium text-[#001208] hover:text-[#1b4332] transition-colors leading-snug">
+                    {lot.name}
+                  </h3>
+                  <p className="text-xs text-[#727973] mt-1 line-clamp-2">
+                    {lot.community}. Manejado por {lot.cooperative}.
+                  </p>
+                </div>
+                <div className="specs-grid-3">
+                  <div className="specs-grid-item">
+                    <span>{lot.specs.k1}</span>
+                    <span>{lot.specs.v1}</span>
+                  </div>
+                  <div className="specs-grid-item">
+                    <span>{lot.specs.k2}</span>
+                    <span>{lot.specs.v2}</span>
+                  </div>
+                  <div className="specs-grid-item">
+                    <span>{lot.specs.k3}</span>
+                    <span>{lot.specs.v3}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-baseline justify-between pt-2 border-t border-gray-100">
+                    <div>
+                      <span className="text-xl font-bold text-[#001208]">${lot.priceFob.toFixed(2)}</span>
+                      <span className="text-[11px] text-[#727973] ml-1.5">{lot.unit}</span>
+                    </div>
+                    <span className="text-xs text-[#2a7a4c] font-semibold">{lot.dispatchStatus}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button
+                      className="btn-sample-action"
+                      onClick={() => setSelectedLot(lot)}
+                    >
+                      Solicitar Muestra
+                    </button>
+                    <Link
+                      href={`/lote/${lot.id}`}
+                      className="btn-trace-action"
+                    >
+                      <QrCode size={14} className="text-[#2a7a4c]" /> Trazabilidad
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </article>
           ))}
         </div>
       </section>
@@ -609,7 +754,7 @@ function Home() {
               <TreePine size={19} />
             </span>
             <p className="eyebrow">Conservación Activa</p>
-            <h3 className="serif">18,500 ha protegidas.</h3>
+            <h3 className="serif">4,250 ha protegidas.</h3>
             <p>La recolección silvestre y los sistemas agroforestales otorgan mayor valor económico al bosque vivo que a la tala.</p>
           </article>
         </div>
@@ -617,7 +762,7 @@ function Home() {
         {/* Banda de Objetivos de Desarrollo Sostenible (ODS) */}
         <div className="ods-band">
           <div className="ods-label">
-            <span>AGENDA 2030</span>
+            <span>AGENDA GLOBAL</span>
             <b>ODS Vinculados</b>
           </div>
           <div className="ods-list">
@@ -631,238 +776,658 @@ function Home() {
         </div>
       </section>
 
-      {/* Banner de App de Campo */}
-      <section className="field-banner">
-        <div className="field-visual">
-          <div className="field-phone-mini">
-            <div className="phone-speaker" />
-            <div className="mini-status">
-              <span>09:41</span>
-              <WifiOff size={12} />
-            </div>
-            <div className="mini-greeting">
-              Buen día,<br />
-              <b>María</b>
-            </div>
-            <div className="mini-record">
-              <Leaf size={15} />
-              <span>Nuevo Registro Parcela</span>
-              <Plus size={13} />
-            </div>
-            <div className="mini-sync">
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-          <span className="field-visual-note">OFFLINE-FIRST EN PARCELA</span>
-        </div>
-        <div className="field-copy">
-          <p className="eyebrow">Tecnología Diseñada para la Selva</p>
-          <h2 className="serif">
-            ¿Sin señal celular?<br />
-            <em>La cosecha no se detiene.</em>
-          </h2>
-          <p>
-            El productor captura coordenadas GPS satelitales, peso en kilogramos y fotografía de la cosecha.
-            Los datos se resguardan en IndexedDB localmente y se sincronizan de forma transparente al recuperar conexión.
-          </p>
-          <Link href="/app" className="button button-dark" data-testid="button-open-field-app">
-            Abrir Simulador de App de Campo <ArrowRight size={16} />
-          </Link>
-        </div>
-      </section>
-
       <Footer />
-      <QuoteDialog lot={quote} onClose={() => setQuote(null)} />
+      <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
     </main>
   );
 }
 
 /**
- * VISTA 1 (Extensión): Marketplace B2B con Filtros Funcionales
+ * VISTA 1 (Extensión): Catálogo Mayorista B2B (Diseño Canopy & Provenance)
  */
 function Marketplace() {
   const [query, setQuery] = useState('');
-  const [fruit, setFruit] = useState('Todos los frutos');
-  const [region, setRegion] = useState('Todas las regiones');
-  const [certOnly, setCertOnly] = useState(false);
-  const [quote, setQuote] = useState<ProductLot | null>(null);
+  const [selectedCommunity, setSelectedCommunity] = useState<string>('Todas');
+  const [selectedProductType, setSelectedProductType] = useState<string>('Todos');
+  const [zeroDeforestOnly, setZeroDeforestOnly] = useState<boolean>(true);
+  const [sortBy, setSortBy] = useState<string>('reciente');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedLot, setSelectedLot] = useState<ProductLot | null>(null);
 
+  // Filtrado reactivo de lotes
   const filteredLots = useMemo(() => {
-    return initialLots.filter((lot) => {
-      const matchFruit = fruit === 'Todos los frutos' || lot.fruit === fruit;
-      const matchRegion = region === 'Todas las regiones' || lot.region === region;
-      const matchCert = !certOnly || lot.certifications.includes('Sin deforestación');
-      const matchText =
-        !query ||
-        `${lot.name} ${lot.fruit} ${lot.cooperative} ${lot.region}`.toLowerCase().includes(query.toLowerCase());
-      return matchFruit && matchRegion && matchCert && matchText;
-    });
-  }, [query, fruit, region, certOnly]);
+    let result = initialLots.filter((lot) => {
+      const matchCommunity =
+        selectedCommunity === 'Todas' ||
+        lot.community.toLowerCase().includes(selectedCommunity.toLowerCase()) ||
+        lot.cooperative.toLowerCase().includes(selectedCommunity.toLowerCase());
 
-  const clearFilters = () => {
+      const matchProductType =
+        selectedProductType === 'Todos' ||
+        lot.fruit.toLowerCase() === selectedProductType.toLowerCase() ||
+        lot.name.toLowerCase().includes(selectedProductType.toLowerCase());
+
+      const matchZeroDeforest =
+        !zeroDeforestOnly ||
+        lot.certifications.some((c) => c.toLowerCase().includes('deforestación'));
+
+      const matchQuery =
+        !query ||
+        `${lot.name} ${lot.id} ${lot.community} ${lot.cooperative} ${lot.fruit} ${lot.region}`
+          .toLowerCase()
+          .includes(query.toLowerCase());
+
+      return matchCommunity && matchProductType && matchZeroDeforest && matchQuery;
+    });
+
+    if (sortBy === 'precio_asc') {
+      result.sort((a, b) => a.priceFob - b.priceFob);
+    } else if (sortBy === 'precio_desc') {
+      result.sort((a, b) => b.priceFob - a.priceFob);
+    } else if (sortBy === 'volumen') {
+      result.sort((a, b) => b.availableKg - a.availableKg);
+    }
+
+    return result;
+  }, [query, selectedCommunity, selectedProductType, zeroDeforestOnly, sortBy]);
+
+  const clearAllFilters = () => {
     setQuery('');
-    setFruit('Todos los frutos');
-    setRegion('Todas las regiones');
-    setCertOnly(false);
+    setSelectedCommunity('Todas');
+    setSelectedProductType('Todos');
+    setZeroDeforestOnly(false);
+    setSortBy('reciente');
   };
 
   return (
-    <main className="grain">
+    <main className="bg-[#faf9f4] min-h-screen text-[#1b1c19] font-dmsans">
       <PrototypeFloatingNav />
       <Header active="marketplace" />
 
-      {/* Encabezado del Marketplace */}
-      <section className="market-hero page-in">
-        <div className="market-hero-copy">
-          <p className="eyebrow">
-            <span className="eyebrow-line" /> MARKETPLACE B2B SOSTENIBLE
-          </p>
-          <h1 className="serif">
-            Cosechas amazónicas<br />
-            <em>con trazabilidad</em> comprobada.
-          </h1>
-          <p>
-            Venta directa por volumen para tostadores, chocolaterías y empresas de cosmética bioética.
-            Cada lote incluye expediente georreferenciado y garantía de cero deforestación.
-          </p>
-        </div>
-        <div className="market-summary">
-          <div className="summary-count">{initialLots.length.toString().padStart(2, '0')}</div>
-          <div>
-            <b>Lotes Verificados</b>
-            <span>Madre de Dios, Puno, Loreto</span>
+      {/* TOP EDITORIAL HEADER */}
+      <section className="w-full bg-[#faf9f4] pt-8 pb-10 border-b border-[rgba(11,41,27,0.06)]">
+        <div className="max-w-[1320px] mx-auto px-6 flex flex-col gap-6">
+          {/* Breadcrumb */}
+          <nav aria-label="Ruta de navegación" className="flex items-center gap-2 text-xs uppercase tracking-wider text-[#727973] font-semibold">
+            <Link href="/" className="hover:text-[#001208] transition-colors">Inicio</Link>
+            <span className="text-gray-300">/</span>
+            <span className="text-[#1b4332] font-bold">Marketplace B2B</span>
+            <span className="text-gray-300">/</span>
+            <span className="text-[#727973]">Catálogo de cosechas activas</span>
+          </nav>
+
+          {/* Editorial Title & Actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+            <div className="lg:col-span-8 flex flex-col gap-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#efeee9] rounded-full w-fit">
+                <span className="w-2 h-2 rounded-full bg-[#2a7a4c] animate-pulse" />
+                <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29]">
+                  Campañas Vivas · Lotes Auditados EUDR
+                </span>
+              </div>
+              <h1 className="font-newsreader text-4xl sm:text-5xl text-[#001208] tracking-tight">
+                Catálogo Mayorista de <span className="italic font-normal text-[#1b4332]">Cosechas Vivas</span>
+              </h1>
+              <p className="text-base text-[#424843] max-w-2xl leading-relaxed">
+                Conexión directa entre compradores éticos y cooperativas amazónicas. Cada lote incluye georreferenciación satelital, análisis de humedad, perfil sensorial y contrato de precio justo garantizado.
+              </p>
+            </div>
+
+            <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-end">
+              <button
+                className="inline-flex items-center justify-between px-5 py-3.5 bg-[#954a17] text-white rounded-lg text-xs font-semibold hover:bg-[#d97736] transition-all shadow-md"
+                onClick={() => alert('Descargando catálogo técnico consolidado TrazAmazon (PDF con análisis físico-químico y polígonos GeoJSON)...')}
+              >
+                <span className="flex items-center gap-2">
+                  <Download size={16} />
+                  <span>Descargar Catálogo PDF (Fichas Técnicas)</span>
+                </span>
+                <ArrowUpRight size={15} />
+              </button>
+              <div className="flex items-center justify-between px-3.5 py-2 bg-[#f5f4ef] rounded-lg text-[#424843] border border-gray-200/50">
+                <span className="text-xs flex items-center gap-1.5 font-medium">
+                  <Globe2 size={14} className="text-[#1b4332]" /> Auditoría Sentinel-2 & Planet
+                </span>
+                <span className="text-[10px] text-[#2a7a4c] font-bold tracking-wider">
+                  100% CERO DEFORESTACIÓN
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="summary-symbol">
-            <Leaf size={25} />
+
+          {/* Live Telemetry Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
+            <div className="b2b-telemetry-box">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#727973]">Disponibilidad en almacén</span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-newsreader text-3xl font-medium text-[#001208]">18</span>
+                <span className="text-xs text-[#1b4332] font-semibold">Lotes listos ahora</span>
+              </div>
+              <span className="text-[11px] text-[#727973]">Cosechas Mayo 2025</span>
+            </div>
+
+            <div className="b2b-telemetry-box">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#727973]">Gobernanza territorial</span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-newsreader text-3xl font-medium text-[#001208]">7</span>
+                <span className="text-xs text-[#1b4332] font-semibold">Comunidades y concesiones</span>
+              </div>
+              <span className="text-[11px] text-[#727973]">Amahuaca, Ese Eja, Shipibo</span>
+            </div>
+
+            <div className="b2b-telemetry-box">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#727973]">Dosel en pie verificado</span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-newsreader text-3xl font-medium text-[#001208]">4,250</span>
+                <span className="text-xs text-[#1b4332] font-semibold">Hectáreas de bosque</span>
+              </div>
+              <span className="text-[11px] text-[#727973]">Custodia activa comunitaria</span>
+            </div>
+
+            <div className="b2b-telemetry-box">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#727973]">Cadena de custodia</span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-newsreader text-3xl font-medium text-[#001208]">100%</span>
+                <span className="text-xs text-[#2a7a4c] font-semibold">Árbol a Puerto</span>
+              </div>
+              <span className="text-[11px] text-[#727973]">Trazabilidad biométrica y QR</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Barra de Filtros y Búsqueda */}
-      <section className="market-content">
-        <div className="market-toolbar">
-          <div className="search-box">
-            <Search size={18} />
+      {/* SEARCH & CONTROL STRIP */}
+      <section className="w-full bg-[#f4f1ea]/95 py-3 sticky top-0 z-40 shadow-xs backdrop-blur-md border-b border-[rgba(11,41,27,0.06)]">
+        <div className="max-w-[1320px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Search Input */}
+          <div className="relative w-full md:w-7/12">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
             <input
-              type="search"
-              placeholder="Buscar por fruto, cooperativa o región (ej. Cacao, Pariamanu)..."
+              className="w-full pl-11 pr-12 py-2.5 bg-white rounded-lg text-xs text-[#001208] placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#143d29] shadow-xs border border-gray-200/80"
+              placeholder="Buscar por lote (ej. TA-0427), producto, comunidad, o cooperativa..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Buscar productos"
-              data-testid="input-search-products"
+              type="text"
             />
-            {query && (
-              <button onClick={() => setQuery('')} aria-label="Limpiar búsqueda" data-testid="button-clear-search">
-                <X size={15} />
+            {query ? (
+              <button
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                onClick={() => setQuery('')}
+              >
+                <X size={14} />
               </button>
+            ) : (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-gray-100 text-gray-500 rounded border">⌘K</kbd>
+              </div>
             )}
           </div>
-          <span className="results-count">
-            <b>{filteredLots.length}</b> lotes disponibles
-          </span>
+
+          {/* Controls & Ordering */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+            <div className="flex items-center gap-2 text-xs">
+              <label className="text-[11px] uppercase font-bold tracking-wider text-[#727973] hidden lg:inline" htmlFor="order-select">
+                Ordenar:
+              </label>
+              <div className="relative">
+                <select
+                  className="appearance-none bg-white pl-3.5 pr-8 py-2 rounded-lg text-xs text-[#001208] focus:outline-none shadow-xs border border-gray-200/80 cursor-pointer font-medium"
+                  id="order-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="reciente">Cosecha más reciente</option>
+                  <option value="volumen">Mayor volumen disponible</option>
+                  <option value="precio_asc">Precio: Menor a Mayor</option>
+                  <option value="precio_desc">Precio: Mayor a Menor</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" size={14} />
+              </div>
+            </div>
+
+            {/* Grid / List Toggle */}
+            <div className="flex items-center p-0.5 bg-[#efeee9] rounded-lg border border-gray-200/60">
+              <button
+                aria-label="Vista cuadrícula"
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white text-[#1b4332] shadow-xs' : 'text-gray-500 hover:text-[#001208]'}`}
+                type="button"
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid size={15} />
+              </button>
+              <button
+                aria-label="Vista lista"
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-white text-[#1b4332] shadow-xs' : 'text-gray-500 hover:text-[#001208]'}`}
+                type="button"
+                onClick={() => setViewMode('list')}
+              >
+                <List size={15} />
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* Fila de Filtros Interactivos */}
-        <div className="filter-row">
-          <div className="filter-label">
-            <Filter size={15} /> FILTROS:
-          </div>
-
-          <label className="select-wrap">
-            <span>FRUTO</span>
-            <select
-              value={fruit}
-              onChange={(e) => setFruit(e.target.value)}
-              aria-label="Filtrar por fruto"
-              data-testid="select-filter-fruit"
-            >
-              <option>Todos los frutos</option>
-              <option>Cacao</option>
-              <option>Café</option>
-              <option>Castaña</option>
-              <option>Aguaje</option>
-            </select>
-            <ChevronDown size={14} />
-          </label>
-
-          <label className="select-wrap">
-            <span>REGIÓN</span>
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              aria-label="Filtrar por región"
-              data-testid="select-filter-region"
-            >
-              <option>Todas las regiones</option>
-              <option>Madre de Dios</option>
-              <option>Puno</option>
-              <option>Loreto</option>
-              <option>Ucayali</option>
-              <option>San Martín</option>
-            </select>
-            <ChevronDown size={14} />
-          </label>
-
-          <button
-            onClick={() => setCertOnly(!certOnly)}
-            className={`cert-toggle ${certOnly ? 'cert-active' : ''}`}
-            aria-pressed={certOnly}
-            data-testid="toggle-zero-deforestation"
-          >
-            <span className="toggle-check">{certOnly && <Check size={12} />}</span>
-            <ShieldCheck size={15} /> Cero Deforestación
-          </button>
-
-          {(query || fruit !== 'Todos los frutos' || region !== 'Todas las regiones' || certOnly) && (
-            <button onClick={clearFilters} className="clear-filters" data-testid="button-clear-filters">
-              Restablecer filtros <X size={13} />
-            </button>
-          )}
-        </div>
-
-        {/* Grid de Productos */}
-        {filteredLots.length > 0 ? (
-          <div className="product-grid market-grid">
-            {filteredLots.map((lot) => (
-              <ProductCard key={lot.id} lot={lot} onQuote={setQuote} />
-            ))}
-          </div>
-        ) : (
-          <div className="empty-results">
-            <span className="empty-icon">
-              <Search size={22} />
-            </span>
-            <h2 className="serif">No se encontraron lotes con estos filtros</h2>
-            <p>Intenta seleccionar otro fruto o desmarcar los filtros para explorar las cosechas amazónicas disponibles.</p>
-            <button className="button button-dark" onClick={clearFilters} data-testid="button-reset-filters">
-              Restablecer filtros <ArrowRight size={15} />
-            </button>
-          </div>
-        )}
       </section>
 
-      {/* Nota de Acompañamiento B2B */}
-      <section className="market-note">
-        <div className="market-note-icon">
-          <Handshake size={22} />
+      {/* TWO-COLUMN WORKSPACE: FILTERS + HIGH-DENSITY LOTS */}
+      <section className="w-full bg-[#faf9f4] py-8">
+        <div className="max-w-[1320px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* LEFT COLUMN: ADVANCED FACETED FILTERS */}
+          <aside className="lg:col-span-3 flex flex-col gap-6">
+            {/* Active Filter Chips */}
+            <div className="flex flex-col gap-2 p-4 bg-[#f5f4ef] rounded-xl border border-gray-200/60">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#001208]">
+                  Filtros Activos ({[selectedCommunity !== 'Todas', selectedProductType !== 'Todos', zeroDeforestOnly, query].filter(Boolean).length})
+                </span>
+                <button
+                  className="text-[10px] font-bold uppercase tracking-wider text-[#954a17] hover:underline"
+                  onClick={clearAllFilters}
+                >
+                  Limpiar todo
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {selectedCommunity !== 'Todas' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-[#001208] rounded-full text-[11px] shadow-xs border">
+                    {selectedCommunity}
+                    <X size={12} className="cursor-pointer hover:text-red-600" onClick={() => setSelectedCommunity('Todas')} />
+                  </span>
+                )}
+                {selectedProductType !== 'Todos' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-[#001208] rounded-full text-[11px] shadow-xs border">
+                    {selectedProductType}
+                    <X size={12} className="cursor-pointer hover:text-red-600" onClick={() => setSelectedProductType('Todos')} />
+                  </span>
+                )}
+                {zeroDeforestOnly && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-[#2a7a4c] font-semibold rounded-full text-[11px] shadow-xs border">
+                    Cero Deforestación
+                    <X size={12} className="cursor-pointer hover:text-red-600" onClick={() => setZeroDeforestOnly(false)} />
+                  </span>
+                )}
+                {query && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-[#001208] rounded-full text-[11px] shadow-xs border">
+                    "{query}"
+                    <X size={12} className="cursor-pointer hover:text-red-600" onClick={() => setQuery('')} />
+                  </span>
+                )}
+                {selectedCommunity === 'Todas' && selectedProductType === 'Todos' && !zeroDeforestOnly && !query && (
+                  <span className="text-[11px] text-[#727973] italic">Sin filtros restrictivos</span>
+                )}
+              </div>
+            </div>
+
+            {/* Filter Group: Comunidades y Cooperativas */}
+            <div className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-xs border border-gray-200/60">
+              <div className="flex items-center justify-between text-[#001208]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#143d29]">Comunidad / Cooperativa</h3>
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+              <div className="flex flex-col gap-2 text-xs text-[#1b1c19]">
+                {[
+                  { name: 'Todas', desc: 'Todas las comunidades', count: 18 },
+                  { name: 'Boca Pariamanu', desc: 'Pueblo Amahuaca · MDD', count: 4 },
+                  { name: 'Palma Real', desc: 'Pueblo Ese Eja · MDD', count: 3 },
+                  { name: 'Alto Tambopata', desc: 'Puno / Selva Alta', count: 5 },
+                  { name: 'Río Las Piedras', desc: 'Castañeros Tahuamanu', count: 3 },
+                  { name: 'Comunidad Bélgica', desc: 'Pueblo Shipibo / Ucayali', count: 2 },
+                  { name: 'Bosque Vivo', desc: 'Tahuamanu Ancestral', count: 1 }
+                ].map((item) => (
+                  <label key={item.name} className="flex items-start gap-2.5 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="community-filter"
+                      className="mt-0.5 accent-[#143d29]"
+                      checked={selectedCommunity === item.name}
+                      onChange={() => setSelectedCommunity(item.name)}
+                    />
+                    <div className="flex flex-col flex-1 leading-snug">
+                      <span className="group-hover:text-[#1b4332] font-medium">{item.name}</span>
+                      <span className="text-[10px] text-[#727973]">{item.desc}</span>
+                    </div>
+                    <span className="text-[10px] text-[#727973] px-1.5 py-0.5 bg-[#f5f4ef] rounded">{item.count}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Filter Group: Tipo de Producto */}
+            <div className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-xs border border-gray-200/60">
+              <div className="flex items-center justify-between text-[#001208]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#143d29]">Tipo de Cosecha</h3>
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+              <div className="flex flex-col gap-2 text-xs text-[#1b1c19]">
+                {[
+                  { name: 'Todos', count: 18 },
+                  { name: 'Cacao', count: 6 },
+                  { name: 'Café', count: 5 },
+                  { name: 'Castaña', count: 4 },
+                  { name: 'Copoazú', count: 2 },
+                  { name: 'Aguaje', count: 1 }
+                ].map((prod) => (
+                  <label key={prod.name} className="flex items-center justify-between cursor-pointer group">
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="product-filter"
+                        className="accent-[#143d29]"
+                        checked={selectedProductType === prod.name}
+                        onChange={() => setSelectedProductType(prod.name)}
+                      />
+                      <span className="group-hover:text-[#1b4332]">{prod.name}</span>
+                    </span>
+                    <span className="text-[10px] text-[#727973]">{prod.count}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Filter Group: Garantía Ecológica & Legal */}
+            <div className="flex flex-col gap-3 p-4 bg-white rounded-xl shadow-xs border border-gray-200/60">
+              <div className="flex items-center justify-between text-[#001208]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#143d29]">Garantía Ecológica & Legal</h3>
+                <ChevronDown size={14} className="text-gray-400" />
+              </div>
+              <div className="flex flex-col gap-2 text-xs text-[#1b1c19]">
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="accent-[#143d29] rounded"
+                      checked={zeroDeforestOnly}
+                      onChange={(e) => setZeroDeforestOnly(e.target.checked)}
+                    />
+                    <span className="group-hover:text-[#1b4332] font-medium">Cero Deforestación (Satélite)</span>
+                  </span>
+                  <span className="text-[10px] text-[#2a7a4c] font-bold">12</span>
+                </label>
+                <div className="flex items-center justify-between text-gray-500">
+                  <span className="flex items-center gap-2">
+                    <input type="checkbox" defaultChecked disabled className="accent-[#143d29] rounded" />
+                    <span>Orgánico USDA / EU</span>
+                  </span>
+                  <span className="text-[10px]">10</span>
+                </div>
+                <div className="flex items-center justify-between text-gray-500">
+                  <span className="flex items-center gap-2">
+                    <input type="checkbox" defaultChecked disabled className="accent-[#143d29] rounded" />
+                    <span>Fair Trade / Comercio Justo</span>
+                  </span>
+                  <span className="text-[10px]">8</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cooperative Escrow Institutional Callout */}
+            <div className="p-4 bg-[#0b291b] text-white rounded-xl flex flex-col gap-2 shadow-sm">
+              <div className="flex items-center gap-2 text-[#c9ebd4]">
+                <ShieldCheck size={18} />
+                <span className="text-[10px] uppercase font-bold tracking-wider">Garantía Institucional</span>
+              </div>
+              <p className="text-xs text-[#adceb9] leading-relaxed">
+                Todos los pagos están custodiados mediante Escrow bancario y se liberan contra BL e informe fitosanitario oficial SENASA.
+              </p>
+            </div>
+          </aside>
+
+          {/* RIGHT COLUMN: 6 B2B HIGH-DENSITY LOT CARDS */}
+          <div className="lg:col-span-9 flex flex-col gap-6">
+            {filteredLots.length > 0 ? (
+              <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'flex flex-col gap-4'}>
+                {filteredLots.map((lot) => (
+                  <article key={lot.id} className="b2b-lot-card-pro group">
+                    {/* Header Image with Overlays */}
+                    <div className="b2b-card-image-wrap">
+                      <img src={lot.image} alt={lot.name} loading="lazy" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#071b12]/80 via-transparent to-black/20" />
+
+                      {/* Top Badges */}
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-bold">
+                        <span className="px-2.5 py-1 bg-white/90 backdrop-blur-md rounded-full text-[#001208] uppercase tracking-wider">
+                          Lote {lot.id}
+                        </span>
+                        <span className="px-2.5 py-1 bg-[#2a7a4c] text-white rounded-full uppercase font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
+                          {lot.harvestTag}
+                        </span>
+                      </div>
+
+                      {/* Bottom Image Coordinates & Score */}
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-[10px] font-mono">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={12} className="text-[#ffdbc9]" />
+                          {lot.coordinates}
+                        </span>
+                        <span className="bg-[#1b4332]/90 px-2 py-0.5 rounded text-[11px] font-bold uppercase text-emerald-200">
+                          {lot.sensoryScore}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="b2b-card-content">
+                      <div className="flex flex-col gap-2">
+                        {/* Certifications Row */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {lot.certifications.map((c, i) => (
+                            <span
+                              key={c}
+                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                i === 2
+                                  ? 'bg-[#ffdbc9] text-[#763300]'
+                                  : 'bg-[#f5f4ef] text-[#424843]'
+                              }`}
+                            >
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Title */}
+                        <h2 className="font-newsreader text-2xl font-medium text-[#001208] group-hover:text-[#1b4332] transition-colors leading-snug">
+                          {lot.name}
+                        </h2>
+
+                        {/* Community Description */}
+                        <p className="text-xs text-[#727973] leading-relaxed">
+                          {lot.community}. Manejado por la {lot.cooperative}.
+                        </p>
+
+                        {/* Technical Specs 3-Column Grid */}
+                        <div className="specs-grid-3">
+                          <div className="specs-grid-item">
+                            <span>{lot.specs.k1}</span>
+                            <span>{lot.specs.v1}</span>
+                          </div>
+                          <div className="specs-grid-item">
+                            <span>{lot.specs.k2}</span>
+                            <span>{lot.specs.v2}</span>
+                          </div>
+                          <div className="specs-grid-item">
+                            <span>{lot.specs.k3}</span>
+                            <span>{lot.specs.v3}</span>
+                          </div>
+                        </div>
+
+                        {/* Sensory Notes */}
+                        <div className="text-xs text-[#424843] leading-relaxed pt-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#1b4332] block">
+                            Perfil Sensorial:
+                          </span>
+                          {lot.sensoryNotes}
+                        </div>
+                      </div>
+
+                      {/* Pricing, MOQ & Actions Lockup */}
+                      <div className="pt-3 border-t border-[rgba(11,41,27,0.08)] flex flex-col gap-3">
+                        <div className="flex items-baseline justify-between">
+                          <div>
+                            <span className="font-newsreader text-2xl font-bold text-[#001208]">
+                              ${lot.priceFob.toFixed(2)}
+                            </span>
+                            <span className="text-[11px] text-[#727973] ml-1.5">{lot.unit}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs text-[#1b4332] font-bold block">{lot.availableKg.toLocaleString()} kg Disp.</span>
+                            <span className="text-[10px] text-[#727973]">Lote total: {lot.totalKg.toLocaleString()} kg</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[#727973] text-[11px]">
+                          <span>{lot.minimumMoq}</span>
+                          <span className="text-[#2a7a4c] font-semibold">{lot.dispatchStatus}</span>
+                        </div>
+
+                        {/* Action Buttons: Solicitar Muestra & Trazabilidad */}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button
+                            className="btn-sample-action"
+                            type="button"
+                            onClick={() => setSelectedLot(lot)}
+                          >
+                            Solicitar Muestra
+                          </button>
+                          <Link
+                            href={`/lote/${lot.id}`}
+                            className="btn-trace-action"
+                            data-testid={`trace-link-${lot.id}`}
+                          >
+                            <QrCode size={15} className="text-[#143d29]" />
+                            <span>Trazabilidad</span>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-results bg-white p-12 rounded-xl text-center border">
+                <span className="empty-icon mx-auto mb-3">
+                  <Search size={22} />
+                </span>
+                <h2 className="font-newsreader text-2xl text-[#001208]">No se encontraron cosechas</h2>
+                <p className="text-xs text-[#727973] max-w-sm mx-auto mt-2">
+                  No hay lotes que coincidan con la búsqueda o combinación de filtros seleccionada.
+                </p>
+                <button className="button button-dark mt-4" onClick={clearAllFilters}>
+                  Restablecer todos los filtros
+                </button>
+              </div>
+            )}
+
+            {/* Pagination Strip */}
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-[#f5f4ef] rounded-xl gap-3 mt-4 border border-gray-200/50">
+              <span className="text-xs text-[#727973]">
+                Mostrando <strong className="text-[#001208]">{filteredLots.length}</strong> de <strong className="text-[#001208]">{initialLots.length}</strong> lotes de cosecha auditada
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  className="px-3 py-1.5 rounded-lg bg-[#efeee9] text-[#727973] text-xs flex items-center gap-1 opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  <ChevronLeft size={14} /> Anterior
+                </button>
+                <button className="w-8 h-8 rounded-lg bg-[#001208] text-white text-xs font-semibold">1</button>
+                <button className="w-8 h-8 rounded-lg bg-white text-[#001208] text-xs hover:bg-[#efeee9] transition-colors border">2</button>
+                <button className="w-8 h-8 rounded-lg bg-white text-[#001208] text-xs hover:bg-[#efeee9] transition-colors border">3</button>
+                <button className="px-3 py-1.5 rounded-lg bg-[#efeee9] text-[#001208] text-xs flex items-center gap-1 hover:bg-gray-200 transition-colors">
+                  Siguiente <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div>
-          <p className="eyebrow">Comercio B2B con Asistencia Logística</p>
-          <h3 className="serif">Coordinación directa de puerto a destino.</h3>
-          <p>
-            TrazAmazon asiste a las cooperativas en el embalaje certificado, trámites aduaneros de exportación
-            y emisión de certificados de no-deforestación requeridos por la normativa de la Unión Europea (EUDR).
-          </p>
+      </section>
+
+      {/* INSTITUTIONAL B2B LOGISTICS & CONTRACTS BANNER */}
+      <section className="corporate-logistics-section">
+        {/* Subtle Watermark Glow */}
+        <div className="absolute -right-20 -bottom-20 w-96 h-96 rounded-full bg-[#1b4332]/40 blur-3xl pointer-events-none" />
+
+        <div className="max-w-[1320px] mx-auto relative z-10 flex flex-col gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-7 flex flex-col gap-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#143d29]/60 text-[#c9ebd4] rounded-full w-fit">
+                <Globe2 size={14} />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Logística Global Directa</span>
+              </div>
+              <h2 className="font-newsreader text-3xl sm:text-4xl text-[#faf9f5] tracking-tight leading-tight">
+                Soluciones de Compra Corporativa y <span className="italic font-normal text-[#ffdbc9]">Muestreo Internacional</span>
+              </h2>
+              <p className="text-sm text-[#adceb9] max-w-xl leading-relaxed">
+                Diseñado para casas de chocolate fino, tostadores de especialidad, laboratorios de cosmética botánica y distribuidores B2B en Europa, Norteamérica y Asia.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 text-[#c9ebd4] text-xs font-semibold">
+                    <Truck size={15} />
+                    <span>DHL Green Express</span>
+                  </div>
+                  <p className="text-[11px] text-[#adceb9] leading-snug">
+                    Muestras técnicas puerta a puerta en 3 a 5 días con certificado fitosanitario SENASA emitido.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 text-[#c9ebd4] text-xs font-semibold">
+                    <Ship size={15} />
+                    <span>Incoterms B2B</span>
+                  </div>
+                  <p className="text-[11px] text-[#adceb9] leading-snug">
+                    FOB Callao o CIF Róterdam, Hamburgo, Amberes y Long Beach. Contratos forward y pre-cosecha.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5 text-[#c9ebd4] text-xs font-semibold">
+                    <ShieldCheck size={15} />
+                    <span>Diligencia EUDR</span>
+                  </div>
+                  <p className="text-[11px] text-[#adceb9] leading-snug">
+                    Polígonos georreferenciados GeoJSON listos para cumplimiento CSRD y Reglamento Europeo Cero Deforestación.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Card: Mesa de Abastecimiento Directo */}
+            <div className="lg:col-span-5 logistics-specialist-card flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#ffdbc9]">
+                  Mesa de Abastecimiento Directo
+                </span>
+                <h3 className="font-newsreader text-2xl text-[#faf9f5]">
+                  ¿Requieres un contrato multi-anual o reserva de cosecha completa?
+                </h3>
+                <p className="text-xs text-[#adceb9] leading-relaxed mt-1">
+                  Nuestro equipo técnico coordina visitas a concesiones en Madre de Dios, auditorías presenciales y reservas de volumen con precios fijados.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-[#954a17] text-white rounded-lg text-xs font-bold hover:bg-[#d97736] transition-all shadow-md"
+                  onClick={() => alert('Conectando con la Mesa de Abastecimiento Directo de TrazAmazon. Un especialista responderá en menos de 24 horas.')}
+                >
+                  <span>Hablar con un Especialista en Abastecimiento</span>
+                  <ArrowRight size={15} />
+                </button>
+                <span className="text-[10px] text-[#adceb9] text-center">
+                  Respuesta en menos de 24 horas laborables · Soporte en ES / EN / FR
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <Link href="/lote/TA-0427" className="text-link" data-testid="link-provenance-example">
-          Ver expediente de lote <ArrowRight size={15} />
-        </Link>
       </section>
 
       <Footer />
-      <QuoteDialog lot={quote} onClose={() => setQuote(null)} />
+      <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
     </main>
   );
 }
@@ -875,8 +1440,8 @@ function LotDetail() {
   const [booking, setBooking] = useState(false);
   const [booked, setBooked] = useState(false);
   const [visitors, setVisitors] = useState(2);
-  const [visitDate, setVisitDate] = useState('2027-07-15');
-  const [quote, setQuote] = useState<ProductLot | null>(null);
+  const [visitDate, setVisitDate] = useState('2025-07-15');
+  const [selectedLot, setSelectedLot] = useState<ProductLot | null>(null);
 
   const lot = initialLots.find((x) => x.id === params?.id) || initialLots[0];
 
@@ -892,7 +1457,7 @@ function LotDetail() {
 
       <div className="lot-page page-in">
         <Link href="/marketplace" className="back-link" data-testid="link-back-marketplace">
-          <ArrowLeft size={15} /> Volver al Marketplace B2B
+          <ArrowLeft size={15} /> Volver al Catálogo Mayorista
         </Link>
 
         {/* Hero del Lote */}
@@ -910,40 +1475,40 @@ function LotDetail() {
               <span className="lot-date">· Cosechado el {lot.harvestDate}</span>
             </div>
             <p className="eyebrow">
-              {lot.fruit} NATIVO <span>·</span> {lot.region}, PERÚ
+              {lot.fruit.toUpperCase()} NATIVO <span>·</span> {lot.region.toUpperCase()}, PERÚ
             </p>
             <h1 className="serif">{lot.name}</h1>
             <p className="lot-intro-coop">
               <span className="coop-mark">{lot.cooperative[0]}</span>
-              {lot.cooperative}
+              {lot.cooperative} · {lot.community}
             </p>
             <p className="lot-price">
-              <strong>${lot.price.toFixed(2)}</strong>
-              <span>/ kg</span>
+              <strong>${lot.priceFob.toFixed(2)}</strong>
+              <span>{lot.unit}</span>
               <i>·</i>
-              <span>Pedido mínimo {lot.minimumVolume} kg</span>
+              <span>{lot.minimumMoq}</span>
             </p>
 
             <div className="cert-list">
               {lot.certifications.map((c) => (
-                <Tag key={c}>
+                <span key={c} className="tag">
                   <ShieldCheck size={13} /> {c}
-                </Tag>
+                </span>
               ))}
-              <Tag earth>
+              <span className="tag tag-earth">
                 <Layers size={13} /> NDVI: {lot.ndviScore} (Dosel Denso)
-              </Tag>
+              </span>
             </div>
 
             <p className="lot-story-intro">{lot.story}</p>
 
             <div className="flex flex-col gap-2 mt-4">
               <button
-                className="button button-dark button-wide"
-                onClick={() => setQuote(lot)}
-                data-testid="button-request-lot-quote"
+                className="button button-earth button-wide"
+                onClick={() => setSelectedLot(lot)}
+                data-testid="button-request-sample-lot"
               >
-                Solicitar Cotización de este Lote <ArrowUpRight size={15} />
+                Solicitar Muestra Técnica / Cotizar <ArrowUpRight size={15} />
               </button>
               <button
                 className="button button-light button-wide"
@@ -968,8 +1533,8 @@ function LotDetail() {
               El rostro detrás de la cosecha: <em>bosque y familia.</em>
             </h2>
             <p>
-              En la cuenca del río Pariamanu, cada familia productora custodia su parcela dentro de concesiones de castaña y parcelas agroforestales.
-              La cosecha de {lot.fruit.toLowerCase()} convive con árboles nativos centenarios y refugios de fauna silvestre.
+              En la cuenca de {lot.community}, cada familia productora custodia su parcela dentro de concesiones forestales y parcelas agroforestales.
+              La cosecha convive con árboles nativos centenarios y refugios de fauna silvestre.
             </p>
 
             <div className="farmer-card">
@@ -980,8 +1545,8 @@ function LotDetail() {
               />
               <div>
                 <b>{lot.farmerName}</b>
-                <span>Productora Líder · {lot.cooperative}</span>
-                <small>Insignia Digital TrazAmazon #0427-MQ</small>
+                <span>Productor(a) Líder · {lot.cooperative}</span>
+                <small>Insignia Digital TrazAmazon #{lot.id}-ID</small>
               </div>
               <BadgeCheck size={20} className="text-[#2d6a4f]" />
             </div>
@@ -991,7 +1556,7 @@ function LotDetail() {
                 <QrCode size={18} />
                 <span className="font-mono text-[10px]">Hash: {lot.lotHash}</span>
               </div>
-              <span className="text-[10px] text-[#6b766c] bg-[#e4ecde] px-2 py-0.5 rounded font-semibold">
+              <span className="text-[10px] text-[#2d6a4f] bg-[#e4ecde] px-2 py-0.5 rounded font-semibold">
                 PostGIS Verified
               </span>
             </div>
@@ -1021,7 +1586,7 @@ function LotDetail() {
 
               {/* Polígono de la Parcela */}
               <div className="parcel-polygon-outline" title="Polígono delimitado de la parcela">
-                <span className="text-[7px] text-[#f7e6ce] absolute -top-3.5 left-1 font-mono">PARCELA 0427</span>
+                <span className="text-[7px] text-[#f7e6ce] absolute -top-3.5 left-1 font-mono">PARCELA {lot.id}</span>
               </div>
 
               {/* Punto de Cosecha con Pulso */}
@@ -1030,7 +1595,7 @@ function LotDetail() {
               {/* Badges de Información Satelital */}
               <div className="satellite-badge-group">
                 <span className="satellite-status-pill">
-                  <ShieldCheck size={11} /> Cero Deforestación 2024-2027
+                  <ShieldCheck size={11} /> Cero Deforestación 2024-2025
                 </span>
                 <span className="ndvi-pill">
                   <Leaf size={11} /> Cobertura Vegetal NDVI {lot.ndviScore}
@@ -1063,7 +1628,7 @@ function LotDetail() {
                 </span>
                 <p>
                   <b>Sincronización Cloud y Verificación Hash</b>
-                  <small>Supabase Cloud PostgreSQL + PostGIS · Acreditado</small>
+                  <small>Supabase Cloud PostgreSQL + PostGIS · Acreditado EUDR</small>
                 </p>
               </div>
               <div>
@@ -1071,13 +1636,13 @@ function LotDetail() {
                   <Leaf size={12} />
                 </span>
                 <p>
-                  <b>Disponible en Marketplace B2B</b>
-                  <small>Venta directa y trazabilidad abierta al consumidor</small>
+                  <b>Disponible en Catálogo Mayorista B2B</b>
+                  <small>Venta directa y trazabilidad abierta al importador</small>
                 </p>
               </div>
             </div>
             <div className="provenance-foot">
-              <ShieldCheck size={15} /> Acreditación oficial TrazAmazon · Desafío Amazonía Viva
+              <ShieldCheck size={15} /> Acreditación oficial TrazAmazon · Reglamento Europeo Cero Deforestación
             </div>
           </div>
         </section>
@@ -1234,7 +1799,7 @@ function LotDetail() {
         </div>
       )}
 
-      <QuoteDialog lot={quote} onClose={() => setQuote(null)} />
+      <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
     </main>
   );
 }
@@ -1248,7 +1813,7 @@ function FieldApp() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Estados del Formulario Modal de Cosecha
-  const [formFruit, setFormFruit] = useState<'Cacao' | 'Café' | 'Castaña' | 'Aguaje'>('Cacao');
+  const [formFruit, setFormFruit] = useState<'Cacao' | 'Café' | 'Castaña' | 'Aguaje' | 'Copoazú'>('Cacao');
   const [formWeight, setFormWeight] = useState('');
   const [formCoords, setFormCoords] = useState('');
   const [formPhoto, setFormPhoto] = useState('');
@@ -1274,9 +1839,8 @@ function FieldApp() {
    * Simula la auto-captura de coordenadas GPS de alta precisión en parcela
    */
   const handleCaptureGPS = () => {
-    // Coordenadas realistas de Madre de Dios / Tambopata
-    const simulatedLat = (-12.5891 + (Math.random() - 0.5) * 0.005).toFixed(4);
-    const simulatedLng = (-69.1950 + (Math.random() - 0.5) * 0.005).toFixed(4);
+    const simulatedLat = (-12.4667 + (Math.random() - 0.5) * 0.005).toFixed(4);
+    const simulatedLng = (-69.2000 + (Math.random() - 0.5) * 0.005).toFixed(4);
     setFormCoords(`${simulatedLat}°, ${simulatedLng}° (±3.2m GPS)`);
   };
 
@@ -1303,7 +1867,7 @@ function FieldApp() {
       id: `HR-${Date.now().toString().slice(-6)}`,
       fruit: formFruit,
       estimatedKg: Number(formWeight),
-      coordinates: formCoords || '-12.5891°, -69.1950° (±3.2m GPS)',
+      coordinates: formCoords || "12° 28' S, 69° 12' W (±3.2m GPS)",
       photoPreview: formPhoto,
       createdAt: new Date().toISOString(),
       syncStatus: 'pending'
@@ -1311,7 +1875,6 @@ function FieldApp() {
 
     setRecords((prev) => [newRecord, ...prev]);
 
-    // Limpiar formulario y cerrar modal
     setFormWeight('');
     setFormCoords('');
     setFormPhoto('');
@@ -1345,7 +1908,6 @@ function FieldApp() {
     const step3 = setTimeout(() => {
       setSyncProgress(100);
       setIsSyncing(false);
-      // Actualizar todos a synced y asignar hash de transacción
       setRecords((prev) =>
         prev.map((r) =>
           r.syncStatus === 'pending'
@@ -1517,7 +2079,7 @@ function FieldApp() {
                 </button>
               </div>
 
-              {/* Botón Principal y Destacado: NUEVO REGISTRO EN PARCELA */}
+              {/* Botón Principal: NUEVO REGISTRO EN PARCELA */}
               <button
                 className="btn-new-harvest"
                 onClick={() => setIsModalOpen(true)}
@@ -1647,9 +2209,10 @@ function FieldApp() {
                           onChange={(e) => setFormFruit(e.target.value as any)}
                           data-testid="select-harvest-fruit"
                         >
-                          <option value="Cacao">Cacao Nativo Chuncho</option>
-                          <option value="Café">Café de Sombra</option>
-                          <option value="Castaña">Castaña Amazónica</option>
+                          <option value="Cacao">Cacao Nativo Chuncho / Criollo</option>
+                          <option value="Café">Café de Sombra Especial</option>
+                          <option value="Castaña">Castaña Amazónica Silvestre</option>
+                          <option value="Copoazú">Copoazú Silvestre</option>
                           <option value="Aguaje">Aguaje Silvestre</option>
                         </select>
                         <ChevronDown size={14} />
@@ -1695,7 +2258,7 @@ function FieldApp() {
                         </button>
                       </div>
 
-                      {/* Subida o Selección de Fotografía */}
+                      {/* Subida de Fotografía */}
                       <label className={`photo-upload ${formPhoto ? 'has-photo' : ''}`}>
                         <input
                           type="file"
@@ -1738,7 +2301,7 @@ function FieldApp() {
           </div>
           <div className="phone-caption">
             <span>MODO OFFLINE · INDEXEDDB</span>
-            <span>PROTOTIPO 2027</span>
+            <span>PRODUCCIÓN V2.4</span>
           </div>
         </div>
       </div>
