@@ -9,7 +9,7 @@ import {
   ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Boxes, Building2, Camera, Check, CheckCircle2, Copy, Database, DollarSign, Droplets, Edit3, FileCode, FlaskConical, Image, LogOut, Mountain, Navigation, Thermometer,
   ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
   Coffee, Compass, Download, ExternalLink, Eye, FileCheck, FileText, Filter, Globe2, Handshake, Heart, Info,
-  Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck,
+  KeyRound, Languages, Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck, Sparkles, Trash2,
   Play, Plus, QrCode, RefreshCw, Save, Search, Send, Settings, ShieldCheck, Ship, ShoppingCart, SlidersHorizontal,
   Smartphone, Sprout, Star, Store, TreePine, TrendingUp, Truck, Upload, User, Users, Wifi, WifiOff, X
 } from 'lucide-react';
@@ -55,6 +55,22 @@ export type ProductLot = {
   story: string;
   ndviScore: number;
   lotHash: string;
+  dispatchTime?: string;
+  indigenousCommunity?: string;
+  nativeLanguage?: string;
+  ancestralPractices?: string;
+  chemicalSpecs?: {
+    cadmiumPpm?: string;
+    fermentationPct?: string;
+    humidityPct?: string;
+    packaging?: string;
+    altitude?: string;
+  };
+  tieredPricing?: {
+    tier1Range: string; tier1Price: number;
+    tier2Range: string; tier2Price: number;
+    tier3Range: string; tier3Price: number;
+  };
 };
 
 /**
@@ -104,7 +120,23 @@ export const initialLots: ProductLot[] = [
     sensoryNotes: 'Cacao profundo, notas de frutos rojos secos, panela de caña y jazmín silvestre.',
     story: 'Cultivado bajo dosel primario de castañales y shihuahuacos en Pariamanu. Fermentado en cajones de madera nativa que acentúan notas florales y frutales.',
     ndviScore: 0.89,
-    lotHash: '0x7e4a18f9c21b38e0'
+    lotHash: '0x7e4a18f9c21b38e0',
+    dispatchTime: '12 - 14 días a Puerto Callao',
+    indigenousCommunity: 'Pueblo Amahuaca',
+    nativeLanguage: 'Amahuaca (Familia Lingüística Pano)',
+    ancestralPractices: 'Chacra integral bajo dosel primario de shihuahuacos y castañales. Cosecha lunar manual sin agroquímicos.',
+    chemicalSpecs: {
+      cadmiumPpm: '< 0.28 ppm (Aprobado UE Reg. 488)',
+      fermentationPct: '84%',
+      humidityPct: '6.8%',
+      packaging: 'Hermético GrainPro con atmósfera controlada',
+      altitude: '260 msnm'
+    },
+    tieredPricing: {
+      tier1Range: '500 – 2,000 kg', tier1Price: 8.40,
+      tier2Range: '2,001 – 10,000 kg', tier2Price: 7.90,
+      tier3Range: '≥ 10,000 kg (FCL)', tier3Price: 7.22
+    }
   },
   {
     id: 'TA-0319',
@@ -417,7 +449,7 @@ export interface B2BQuoteOrder {
   requestedKg: number;
   pricePerKg: number;
   totalUsd: number;
-  status: 'submitted' | 'quoted' | 'sample_dispatched' | 'contract_locked';
+  status: 'submitted' | 'quoted' | 'sample_preparing' | 'sample_dispatched' | 'sample_delivered' | 'contract_locked' | 'customs_cleared';
   createdAt: string;
   trackingCode?: string;
   courier?: string;
@@ -2085,13 +2117,26 @@ function getLotGeoCoords(lotId: string) {
 function LotDetail() {
   const [, params] = useRoute('/lote/:id');
   const [selectedLot, setSelectedLot] = useState<ProductLot | null>(null);
+  const [showQrModal, setShowQrModal] = useState<boolean>(false);
 
-  const lot = initialLots.find((x) => x.id === params?.id) || initialLots[0];
+  // Leer lotes sincronizados de memoria persistente si existen, o catálogo inicial
+  const [lots] = useState<ProductLot[]>(() => {
+    try {
+      const saved = localStorage.getItem('trazamazon-lots');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return initialLots;
+  });
+
+  const lot = lots.find((x) => x.id === params?.id) || lots[0];
 
   // Related products from the same cooperative or similar Amazonian harvests
   const relatedLots = useMemo(() => {
-    return initialLots.filter((l) => l.id !== lot.id).slice(0, 3);
-  }, [lot.id]);
+    return lots.filter((l) => l.id !== lot.id).slice(0, 3);
+  }, [lots, lot.id]);
 
   return (
     <main className="bg-[#faf9f4] min-h-screen text-[#1b1c19] font-dmsans">
@@ -2216,18 +2261,18 @@ function LotDetail() {
               {/* TIERED PRICING BOX (ALIBABA STYLE) */}
               <div className="tiered-pricing-box">
                 <div className="tiered-col">
-                  <div className="tiered-qty">500 – 2,000 kg</div>
-                  <div className="tiered-price">${lot.priceFob.toFixed(2)} USD</div>
+                  <div className="tiered-qty">{lot.tieredPricing?.tier1Range || '500 – 2,000 kg'}</div>
+                  <div className="tiered-price">${(lot.tieredPricing?.tier1Price || lot.priceFob).toFixed(2)} USD</div>
                   <div className="tiered-sub">/ kg FOB Callao</div>
                 </div>
                 <div className="tiered-col">
-                  <div className="tiered-qty">2,001 – 10,000 kg</div>
-                  <div className="tiered-price">${(lot.priceFob * 0.94).toFixed(2)} USD</div>
+                  <div className="tiered-qty">{lot.tieredPricing?.tier2Range || '2,001 – 10,000 kg'}</div>
+                  <div className="tiered-price">${(lot.tieredPricing?.tier2Price || (lot.priceFob * 0.94)).toFixed(2)} USD</div>
                   <div className="tiered-sub">/ kg (-6% Volumen)</div>
                 </div>
                 <div className="tiered-col">
-                  <div className="tiered-qty">≥ 10,000 kg (FCL)</div>
-                  <div className="tiered-price">${(lot.priceFob * 0.86).toFixed(2)} USD</div>
+                  <div className="tiered-qty">{lot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)'}</div>
+                  <div className="tiered-price">${(lot.tieredPricing?.tier3Price || (lot.priceFob * 0.86)).toFixed(2)} USD</div>
                   <div className="tiered-sub">/ kg (-14% Contenedor)</div>
                 </div>
               </div>
@@ -2465,14 +2510,32 @@ function LotDetail() {
               </div>
             </div>
 
-            <div className="mt-6 p-3.5 bg-[#f0eee4] border border-[#e1dfd4] rounded-xl flex items-center justify-between text-xs">
+            {/* Insignias de Identidad Biocultural Amazónica */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#f4f7f2] border border-[#c9d8c4] text-[#143d29] text-[11px] font-semibold rounded-md">
+                <TreePine size={12} className="text-[#2d6a4f]" /> {lot.indigenousCommunity || 'Pueblo Amahuaca'}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#faf6f0] border border-[#d4a373]/40 text-[#8c5825] text-[11px] font-semibold rounded-md">
+                <Languages size={12} className="text-[#b07d3b]" /> {lot.nativeLanguage || 'Amahuaca (Familia Pano)'}
+              </span>
+            </div>
+
+            <div className="mt-4 p-3.5 bg-[#f0eee4] border border-[#e1dfd4] rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 text-[#2d6a4f]">
                 <QrCode size={18} />
                 <span className="font-mono text-[11px]">Hash: {lot.lotHash}</span>
+                <span className="text-[10px] text-[#2d6a4f] bg-[#e4ecde] px-2 py-0.5 rounded font-semibold">
+                  PostGIS Verified
+                </span>
               </div>
-              <span className="text-[10px] text-[#2d6a4f] bg-[#e4ecde] px-2 py-0.5 rounded font-semibold">
-                PostGIS Verified
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-[#2d6a4f]/30 text-xs font-semibold text-[#1b4332] hover:bg-[#e8f1ec] transition-colors shadow-xs"
+                data-testid="btn-view-producer-qr"
+              >
+                <QrCode size={13} /> Ver QR del Perfil Único
+              </button>
             </div>
           </div>
 
@@ -2638,6 +2701,98 @@ function LotDetail() {
       <Footer />
 
       <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
+
+      {/* MODAL QR OFICIAL DEL PERFIL ÚNICO DEL PRODUCTOR */}
+      {showQrModal && (
+        <div className="b2b-modal-backdrop" onClick={() => setShowQrModal(false)}>
+          <div className="b2b-modal-panel p-6 max-w-md text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+              <div className="text-left">
+                <h3 className="text-base font-serif font-bold text-[#1b4332]">Pasaporte Digital & QR Oficial</h3>
+                <p className="text-xs text-gray-500">Credencial verificada para empaques GrainPro y ferias.</p>
+              </div>
+              <button onClick={() => setShowQrModal(false)} className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-6 flex flex-col items-center">
+              <div className="b2b-qr-box mb-4">
+                <svg width="180" height="180" viewBox="0 0 180 180" fill="none" className="rounded-lg">
+                  <rect width="180" height="180" fill="white" />
+                  <rect x="15" y="15" width="45" height="45" fill="#1b4332" rx="4" />
+                  <rect x="23" y="23" width="29" height="29" fill="white" rx="2" />
+                  <rect x="30" y="30" width="15" height="15" fill="#1b4332" />
+
+                  <rect x="120" y="15" width="45" height="45" fill="#1b4332" rx="4" />
+                  <rect x="128" y="23" width="29" height="29" fill="white" rx="2" />
+                  <rect x="135" y="30" width="15" height="15" fill="#1b4332" />
+
+                  <rect x="15" y="120" width="45" height="45" fill="#1b4332" rx="4" />
+                  <rect x="23" y="128" width="29" height="29" fill="white" rx="2" />
+                  <rect x="30" y="135" width="15" height="15" fill="#1b4332" />
+
+                  <rect x="70" y="20" width="12" height="12" fill="#2d6a4f" />
+                  <rect x="90" y="20" width="12" height="12" fill="#1b4332" />
+                  <rect x="70" y="40" width="20" height="10" fill="#1b4332" />
+                  <rect x="20" y="70" width="15" height="12" fill="#1b4332" />
+                  <rect x="45" y="70" width="12" height="12" fill="#2d6a4f" />
+                  <rect x="70" y="70" width="40" height="40" fill="#1b4332" rx="4" />
+                  <rect x="80" y="80" width="20" height="20" fill="white" />
+                  <rect x="85" y="85" width="10" height="10" fill="#b07d3b" />
+                  <rect x="120" y="70" width="15" height="15" fill="#1b4332" />
+                  <rect x="145" y="70" width="20" height="12" fill="#2d6a4f" />
+                  <rect x="20" y="95" width="15" height="12" fill="#2d6a4f" />
+                  <rect x="45" y="95" width="12" height="15" fill="#1b4332" />
+                  <rect x="120" y="95" width="15" height="15" fill="#2d6a4f" />
+                  <rect x="145" y="95" width="15" height="15" fill="#1b4332" />
+                  <rect x="70" y="120" width="15" height="15" fill="#1b4332" />
+                  <rect x="95" y="120" width="15" height="15" fill="#2d6a4f" />
+                  <rect x="120" y="120" width="20" height="20" fill="#1b4332" />
+                  <rect x="150" y="120" width="15" height="15" fill="#2d6a4f" />
+                  <rect x="70" y="145" width="20" height="15" fill="#2d6a4f" />
+                  <rect x="100" y="145" width="15" height="15" fill="#1b4332" />
+                  <rect x="130" y="150" width="30" height="12" fill="#1b4332" />
+                </svg>
+                <span className="text-[10px] font-mono text-gray-500 mt-2">
+                  ID: {lot.id} · Hash: {lot.lotHash}
+                </span>
+              </div>
+
+              <h4 className="font-serif font-bold text-sm text-[#1b4332]">{lot.name}</h4>
+              <p className="text-xs text-gray-500 mt-1">
+                Productor: <b>{lot.farmerName}</b> · {lot.indigenousCommunity || 'Pueblo Amahuaca'}
+              </p>
+              <p className="text-[11px] font-mono text-emerald-800 mt-0.5">
+                Validado PostGIS EUDR · Reg. UE 2023/1115
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-3 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://trazamazon.org/lote/${lot.id}`);
+                  alert('Enlace del pasaporte copiado al portapapeles.');
+                }}
+                className="button button-small button-outline text-xs"
+              >
+                <Copy size={13} /> Copiar Enlace
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert('Etiqueta descargada en alta resolución lista para impresión.');
+                  setShowQrModal(false);
+                }}
+                className="button button-small button-primary text-xs"
+              >
+                <Download size={13} /> Descargar Etiqueta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -3456,13 +3611,41 @@ function B2BDashboardPage() {
   const { orders, updateOrderStatus } = useB2BOrders();
   const [activeRole, setActiveRole] = useState<'buyer' | 'seller'>(currentUser?.role || 'seller');
 
-  // Pestañas activas por rol (sin tab técnica de Supabase en UI)
-  const [sellerTab, setSellerTab] = useState<'overview' | 'orders' | 'lots' | 'customize' | 'location' | 'satellite'>('overview');
-  const [buyerTab, setBuyerTab] = useState<'overview' | 'orders' | 'passports' | 'profile'>('overview');
+  // Pestañas activas por rol (con módulo de Configuración para ambos)
+  const [sellerTab, setSellerTab] = useState<'overview' | 'orders' | 'lots' | 'customize' | 'location' | 'satellite' | 'settings'>('overview');
+  const [buyerTab, setBuyerTab] = useState<'overview' | 'orders' | 'passports' | 'profile' | 'settings'>('overview');
 
-  // Perfil de la cooperativa y catálogo de lotes con fotos editables
+  // Perfil de la cooperativa y catálogo de lotes sincronizados con memoria persistente
   const [coopProfile, setCoopProfile] = useState<CooperativeProfile>(defaultCooperativeProfile);
-  const [lots, setLots] = useState<ProductLot[]>(initialLots);
+  const [lots, setLots] = useState<ProductLot[]>(() => {
+    try {
+      const saved = localStorage.getItem('trazamazon-lots');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return initialLots;
+  });
+
+  // Filtros y búsqueda para Cotizaciones del Comprador
+  const [buyerOrderFilter, setBuyerOrderFilter] = useState<'all' | 'samples' | 'quoted' | 'escrow'>('all');
+  const [buyerSearchQuery, setBuyerSearchQuery] = useState<string>('');
+
+  // Modales de QR
+  const [showSellerQrModal, setShowSellerQrModal] = useState<boolean>(false);
+
+  // Estado para Configuración de Cuenta (Ambos Roles)
+  const [currentPassword, setCurrentPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [currencyPref, setCurrencyPref] = useState<'USD' | 'EUR' | 'GBP' | 'PEN'>('USD');
+  const [languagePref, setLanguagePref] = useState<'Español' | 'English' | 'Français'>('Español');
+  const [notifyRfq, setNotifyRfq] = useState<boolean>(true);
+  const [notifyCourier, setNotifyCourier] = useState<boolean>(true);
+  const [notifySatellite, setNotifySatellite] = useState<boolean>(false);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState<boolean>(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
 
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
@@ -3726,13 +3909,54 @@ function B2BDashboardPage() {
     setIsEditLotModalOpen(true);
   };
 
-  // Guardar cambios de edición de lote
+  // Guardar cambios de edición exhaustiva de lote (sincronizado con /lote/:id y localStorage)
   const handleSaveEditLot = (e: FormEvent) => {
     e.preventDefault();
     if (!editingLot) return;
-    setLots((prev) => prev.map((l) => (l.id === editingLot.id ? editingLot : l)));
+    setLots((prev) => {
+      const updated = prev.map((l) => (l.id === editingLot.id ? editingLot : l));
+      try {
+        localStorage.setItem('trazamazon-lots', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     setIsEditLotModalOpen(false);
-    showNotice(`Condiciones del lote ${editingLot.name} (${editingLot.id}) actualizadas con éxito.`);
+    showNotice(`Condiciones completas del lote ${editingLot.name} (${editingLot.id}) guardadas y sincronizadas en la ficha técnica pública.`);
+  };
+
+  // Manejo de actualización de contraseña
+  const handleUpdatePassword = (e: FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      alert('Por favor ingresa tu contraseña actual.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      alert('La nueva contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert('Las contraseñas no coinciden. Por favor verifica.');
+      return;
+    }
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    showNotice('Contraseña de acceso corporativo actualizada con éxito.');
+  };
+
+  // Manejo de eliminación definitiva de cuenta
+  const handleDeleteAccount = () => {
+    const expected = activeRole === 'buyer' ? 'Valrhona Artisans B2B' : coopProfile.name;
+    if (deleteConfirmText.trim().toLowerCase() !== expected.trim().toLowerCase()) {
+      alert(`Para confirmar, debes escribir exactamente "${expected}".`);
+      return;
+    }
+    setIsDeleteAccountModalOpen(false);
+    showNotice('Tu cuenta comercial y credenciales han sido eliminadas.');
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1200);
   };
 
   // KPIs Comprador
@@ -3889,6 +4113,15 @@ function B2BDashboardPage() {
                       <Building2 size={15} /> Perfil de Comprador
                     </span>
                   </button>
+                  <button
+                    onClick={() => setBuyerTab('settings')}
+                    className={`b2b-sidebar-nav-item ${buyerTab === 'settings' ? 'active' : ''}`}
+                    data-testid="buyer-tab-settings"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Settings size={15} /> Configuración de Cuenta
+                    </span>
+                  </button>
                 </>
               ) : (
                 <>
@@ -3965,180 +4198,379 @@ function B2BDashboardPage() {
             {activeRole === 'buyer' && (
               <>
                 {buyerTab === 'overview' && (
-                  <div>
-                    <div className="b2b-banner">
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                          <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
-                            Comprador Corporativo Verificado · Tax ID: FR-84920192
-                          </span>
-                          <h1 className="text-2xl sm:text-3xl font-serif">Valrhona Artisans B2B</h1>
-                          <p className="text-sm text-gray-200 mt-1">
-                            Responsable de Abastecimiento: Alexandre Bonnat · Tain-l&apos;Hermitage, Francia
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 bg-white/10 px-4 py-2.5 rounded-xl border border-white/20">
-                          <ShieldCheck size={24} className="text-[#b07d3b]" />
-                          <div className="text-left text-xs">
-                            <p className="font-bold text-white">Garantía Trade Assurance</p>
-                            <p className="text-gray-300">Fondos protegidos en Escrow bancario</p>
+                  <div className="space-y-6">
+                    {/* Hero Panorámico Paisaje Andino-Amazónico */}
+                    <div
+                      className="b2b-overview-hero"
+                      style={{
+                        backgroundImage: `url('https://images.unsplash.com/photo-1518457607834-6e8d80c183c5?auto=format&fit=crop&w=1600&q=80')`
+                      }}
+                    >
+                      <div className="b2b-overview-hero-content text-left">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-xs font-mono tracking-wider uppercase mb-2 backdrop-blur-xs">
+                              Comprador Corporativo Verificado · Tax ID: FR-84920192
+                            </span>
+                            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white">Valrhona Artisans B2B</h1>
+                            <p className="text-xs sm:text-sm text-gray-200 mt-1 max-w-xl">
+                              Abastecimiento directo y trazabilidad satelital EUDR desde las cuencas agroforestales de Madre de Dios, Puno y San Martín.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 bg-white/15 px-4 py-3 rounded-xl border border-white/20 backdrop-blur-xs">
+                            <ShieldCheck size={28} className="text-[#d4a373]" />
+                            <div className="text-left text-xs">
+                              <p className="font-bold text-white">Garantía Trade Assurance</p>
+                              <p className="text-gray-200 text-[11px]">Fondos asegurados en Escrow bancario</p>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="b2b-kpis-grid">
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Muestras Activas</span>
-                          <PackageCheck size={18} className="text-[#2d6a4f]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{activeSamplesCount}</p>
-                        <p className="text-xs text-gray-500 mt-1">En tránsito courier puerta a puerto</p>
+                    {/* KPIs de Comprador */}
+                    <div className="b2b-kpi-grid">
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Muestras Activas</span>
+                        <p className="text-2xl font-serif font-bold text-[#1b4332] mt-1">{activeSamplesCount}</p>
+                        <p className="text-xs text-gray-500 mt-1">En tránsito courier puerta a puerta</p>
                       </div>
-
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes Contratados</span>
-                          <Handshake size={18} className="text-[#b07d3b]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{contractedLotsCount}</p>
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Lotes Contratados</span>
+                        <p className="text-2xl font-serif font-bold text-[#1b4332] mt-1">{contractedLotsCount}</p>
                         <p className="text-xs text-gray-500 mt-1">Acuerdos comerciales firmados</p>
                       </div>
-
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Volumen Comprometido</span>
-                          <Layers size={18} className="text-[#1b4332]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalVolumeKg.toLocaleString()} kg</p>
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Volumen Comprometido</span>
+                        <p className="text-2xl font-serif font-bold text-[#1b4332] mt-1">{totalVolumeKg.toLocaleString()} kg</p>
                         <p className="text-xs text-gray-500 mt-1">Cacao criollo y café especial</p>
                       </div>
-
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Protección Escrow</span>
-                          <ShieldCheck size={18} className="text-[#2d6a4f]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">${totalEscrowUsd.toLocaleString()} USD</p>
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Protección Escrow</span>
+                        <p className="text-2xl font-serif font-bold text-[#2d6a4f] mt-1">${totalEscrowUsd.toLocaleString()} USD</p>
                         <p className="text-xs text-gray-500 mt-1">Depósitos asegurados en custodia</p>
+                      </div>
+                    </div>
+
+                    {/* Widgets de Resumen Enriquecido (2x2 Grid) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* Widget 1: Envíos & Muestras Activas */}
+                      <div className="b2b-widget-card">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                          <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                            <Truck size={16} className="text-[#2d6a4f]" /> Muestra Técnica en Tránsito
+                          </h3>
+                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                            DHL Green Express
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <img
+                            src="https://images.unsplash.com/photo-1541675154750-0444c7d51e8e?auto=format&fit=crop&w=400&q=80"
+                            alt="Cacao"
+                            className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0 text-left">
+                            <h4 className="text-xs font-bold text-[#1b4332] truncate">Cacao Nativo Criollo de Aroma Fino</h4>
+                            <p className="text-xs text-gray-600 mt-0.5">Asociación Bosque Vivo · 0.5 kg</p>
+                            <p className="text-[11px] font-mono text-gray-500 mt-1">
+                              Guía: <b>DHL-PE-7729104</b> · SENASA: <b>SENASA-MDD-2025-0482</b>
+                            </p>
+                            <div className="mt-2 flex items-center justify-between">
+                              <span className="text-[10px] text-gray-500">Etapa 3 de 4 (En Tránsito)</span>
+                              <button
+                                onClick={() => setBuyerTab('orders')}
+                                className="text-xs text-[#2d6a4f] hover:text-[#1b4332] font-semibold underline"
+                              >
+                                Ver Tracking Completo
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Widget 2: Pasaportes Digitales EUDR */}
+                      <div className="b2b-widget-card">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                          <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                            <FileCheck size={16} className="text-[#2d6a4f]" /> Pasaportes EUDR Acreditados
+                          </h3>
+                          <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                            TRACES NT Ready
+                          </span>
+                        </div>
+                        <div className="space-y-2 text-left text-xs">
+                          <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-[#1b4332]">Polígono GeoJSON · Lote TA-0427</p>
+                              <span className="text-[10px] text-gray-500">Sentinel-2 ESA · Cobertura NDVI 0.89</span>
+                            </div>
+                            <button
+                              onClick={() => alert('Descargando GeoJSON auditado para aduana europea TRACES NT...')}
+                              className="button button-small button-outline text-[11px] py-1 px-2"
+                            >
+                              <Download size={12} /> GeoJSON
+                            </button>
+                          </div>
+                          <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-[#1b4332]">Análisis de Cadmio & Metales Pesados</p>
+                              <span className="text-[10px] text-gray-500">&lt; 0.28 ppm · Aprobado Reg. UE 488</span>
+                            </div>
+                            <button
+                              onClick={() => alert('Descargando certificado de laboratorio ISO 17025...')}
+                              className="button button-small button-outline text-[11px] py-1 px-2"
+                            >
+                              <Download size={12} /> Certificado
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Widget 3: Custodia Bancaria Escrow */}
+                      <div className="b2b-widget-card">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                          <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                            <ShieldCheck size={16} className="text-[#2d6a4f]" /> Fideicomiso Bancario Escrow
+                          </h3>
+                          <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                            Fondos Seguros
+                          </span>
+                        </div>
+                        <div className="text-left text-xs space-y-2">
+                          <p className="text-gray-600">
+                            Tus pagos están custodiados en una cuenta fiduciaria internacional BBVA Perú. Los fondos sólo se transfieren a la cooperativa tras la confirmación de arribo y visto bueno de aduana en puerto de destino.
+                          </p>
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="font-mono text-gray-500">Cuenta: BBVA-PERU-ESCROW-89102-USD</span>
+                            <span className="font-bold text-emerald-800">100% Garantizado</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Widget 4: Abastecimiento Directo */}
+                      <div className="b2b-widget-card flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                            <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                              <Store size={16} className="text-[#2d6a4f]" /> Catálogo Mayorista de Cosechas Vivas
+                            </h3>
+                            <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                              Cosecha 2025
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 text-left">
+                            Descubre lotes de café de sombra, cacao criollo, castaña amazónica y copoazú directamente de organizaciones productoras originarias.
+                          </p>
+                        </div>
+                        <div className="pt-4 text-left">
+                          <Link href="/marketplace" className="button button-small button-primary text-xs w-full justify-center">
+                            <Store size={14} /> Explorar Catálogo Mayorista B2B
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {buyerTab === 'orders' && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Mis Cotizaciones (RFQs) y Pedidos de Muestras</h2>
-                      <Link href="/marketplace" className="text-xs font-semibold text-[#2d6a4f] hover:underline flex items-center gap-1">
-                        Solicitar Más Cosechas <ArrowRight size={14} />
+                  <div className="space-y-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-left">
+                      <div>
+                        <h2 className="text-xl font-serif font-bold text-[#1b4332]">Mis Cotizaciones (RFQs) y Pedidos de Muestras</h2>
+                        <p className="text-xs text-gray-500">Seguimiento logístico en tiempo real con precintos fitosanitarios y guías courier.</p>
+                      </div>
+                      <Link href="/marketplace" className="button button-small button-outline text-xs">
+                        Solicitar Más Cosechas →
                       </Link>
                     </div>
 
+                    {/* Barra de Búsqueda y Filtros Interactivos */}
+                    <div className="bg-white p-3.5 rounded-xl border border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="relative flex-1 min-w-[220px]">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={buyerSearchQuery}
+                          onChange={(e) => setBuyerSearchQuery(e.target.value)}
+                          placeholder="Buscar por lote, cooperativa o código..."
+                          className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs font-sans focus:outline-none focus:border-[#2d6a4f]"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setBuyerOrderFilter('all')}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${buyerOrderFilter === 'all' ? 'bg-[#1b4332] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                          Todas ({orders.length})
+                        </button>
+                        <button
+                          onClick={() => setBuyerOrderFilter('samples')}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${buyerOrderFilter === 'samples' ? 'bg-[#1b4332] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                          Muestras en Tránsito
+                        </button>
+                        <button
+                          onClick={() => setBuyerOrderFilter('quoted')}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${buyerOrderFilter === 'quoted' ? 'bg-[#1b4332] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                          Cotizadas
+                        </button>
+                        <button
+                          onClick={() => setBuyerOrderFilter('escrow')}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${buyerOrderFilter === 'escrow' ? 'bg-[#1b4332] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                          Contratos Escrow
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista Visual de Cotizaciones y Entregas */}
                     <div className="space-y-4">
-                      {orders.map((ord) => {
-                        const isSample = ord.type === 'sample';
-                        return (
-                          <div key={ord.id} className="b2b-order-card" data-testid={`buyer-order-${ord.id}`}>
-                            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                              <div>
+                      {orders
+                        .filter((ord) => {
+                          const matchesSearch =
+                            buyerSearchQuery === '' ||
+                            ord.lotName.toLowerCase().includes(buyerSearchQuery.toLowerCase()) ||
+                            ord.cooperative.toLowerCase().includes(buyerSearchQuery.toLowerCase()) ||
+                            ord.id.toLowerCase().includes(buyerSearchQuery.toLowerCase());
+                          const matchesFilter =
+                            buyerOrderFilter === 'all' ||
+                            (buyerOrderFilter === 'samples' && ord.status === 'sample_dispatched') ||
+                            (buyerOrderFilter === 'quoted' && ord.status === 'quoted') ||
+                            (buyerOrderFilter === 'escrow' && ord.status === 'contract_locked');
+                          return matchesSearch && matchesFilter;
+                        })
+                        .map((ord) => {
+                          const lotInfo = lots.find((l) => l.id === ord.lotId);
+                          return (
+                            <div key={ord.id} className="b2b-order-card text-left" data-testid={`buyer-order-${ord.id}`}>
+                              <div className="flex flex-wrap items-start justify-between gap-4 pb-3 border-b border-gray-100">
+                                <div className="flex items-start gap-3">
+                                  <img
+                                    src={lotInfo?.image || 'https://images.unsplash.com/photo-1541675154750-0444c7d51e8e?auto=format&fit=crop&w=400&q=80'}
+                                    alt={ord.lotName}
+                                    className="w-16 h-16 rounded-xl object-cover border border-gray-200 shrink-0"
+                                  />
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
+                                        {ord.id}
+                                      </span>
+                                      <h3 className="font-bold text-sm text-[#1b4332]">{ord.lotName}</h3>
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#2d6a4f] bg-[#e8f1ec] px-2 py-0.5 rounded">
+                                        {ord.fruit}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Cooperativa: <b>{ord.cooperative}</b> · Solicitado: {ord.createdAt}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  {ord.status === 'submitted' && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                                      Solicitud Recibida (En Evaluación)
+                                    </span>
+                                  )}
+                                  {ord.status === 'quoted' && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                                      Cotización Aprobada por Cooperativa
+                                    </span>
+                                  )}
+                                  {ord.status === 'sample_preparing' && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                      Muestra en Preparación (Laboratorio)
+                                    </span>
+                                  )}
+                                  {ord.status === 'sample_dispatched' && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      Muestra Despachada (En Tránsito DHL)
+                                    </span>
+                                  )}
+                                  {ord.status === 'sample_delivered' && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-300">
+                                      Muestra Entregada en Destino
+                                    </span>
+                                  )}
+                                  {ord.status === 'contract_locked' && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+                                      Contrato Formalizado con Escrow
+                                    </span>
+                                  )}
+                                  {ord.status === 'customs_cleared' && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800 border border-cyan-300">
+                                      Despacho Marítimo / Arribo Puerto
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Stepper de Seguimiento Logístico */}
+                              <div className="py-4">
+                                <div className="b2b-stepper">
+                                  <div className="b2b-step active">
+                                    <div className="b2b-step-circle">
+                                      <Check size={14} />
+                                    </div>
+                                    <span className="b2b-step-label">1. Solicitud Recibida</span>
+                                  </div>
+                                  <div className={`b2b-step ${ord.status !== 'submitted' ? 'active' : ''}`}>
+                                    <div className="b2b-step-circle">
+                                      {ord.status !== 'submitted' ? <Check size={14} /> : '2'}
+                                    </div>
+                                    <span className="b2b-step-label">2. Proforma / Aprobación</span>
+                                  </div>
+                                  <div className={`b2b-step ${ord.status === 'sample_dispatched' || ord.status === 'sample_delivered' || ord.status === 'contract_locked' || ord.status === 'customs_cleared' ? 'active' : ''}`}>
+                                    <div className="b2b-step-circle">
+                                      {ord.status === 'sample_dispatched' || ord.status === 'sample_delivered' || ord.status === 'contract_locked' || ord.status === 'customs_cleared' ? <Check size={14} /> : '3'}
+                                    </div>
+                                    <span className="b2b-step-label">3. Despacho Courier SENASA</span>
+                                  </div>
+                                  <div className={`b2b-step ${ord.status === 'contract_locked' || ord.status === 'customs_cleared' ? 'active' : ''}`}>
+                                    <div className="b2b-step-circle">
+                                      {ord.status === 'contract_locked' || ord.status === 'customs_cleared' ? <Check size={14} /> : '4'}
+                                    </div>
+                                    <span className="b2b-step-label">4. Arribo a Puerto / Escrow</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Caja de Logística e Información */}
+                              <div className="p-3.5 bg-[#faf6f0] rounded-xl border border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div>
+                                  <p className="font-semibold text-gray-700">
+                                    Requerimiento: <b>{ord.requestedKg.toLocaleString()} kg</b> · Modalidad: {ord.type === 'sample' ? 'Muestra Técnica Oficial' : 'Carga Mayorista'}
+                                  </p>
+                                  {ord.trackingCode && (
+                                    <p className="font-mono text-gray-600 mt-0.5">
+                                      Guía: <b>{ord.courier} ({ord.trackingCode})</b> · Precinto: <b>{ord.senasaGuide}</b>
+                                    </p>
+                                  )}
+                                </div>
+
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                                    {ord.id}
-                                  </span>
-                                  <h4 className="font-serif font-bold text-[#1b4332] text-base">{ord.lotName}</h4>
+                                  <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
+                                    Ver Lote en Marketplace
+                                  </Link>
+                                  <button
+                                    onClick={() => alert(`Descargando Proforma Comercial para la orden ${ord.id}...`)}
+                                    className="button button-small button-outline text-xs"
+                                  >
+                                    <FileText size={12} /> Proforma PDF
+                                  </button>
+                                  <button
+                                    onClick={() => setBuyerTab('passports')}
+                                    className="button button-small button-dark text-xs"
+                                  >
+                                    <FileCheck size={12} /> Pasaporte EUDR
+                                  </button>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Lote <b>{ord.lotId}</b> · Cooperativa: <b>{ord.cooperative}</b> · Solicitado: {ord.createdAt}
-                                </p>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                {ord.status === 'submitted' && (
-                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                                    Enviada · Esperando Proforma
-                                  </span>
-                                )}
-                                {ord.status === 'quoted' && (
-                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
-                                    Proforma Aprobada · Por Despachar
-                                  </span>
-                                )}
-                                {ord.status === 'sample_dispatched' && (
-                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    Muestra Despachada (En Tránsito)
-                                  </span>
-                                )}
-                                {ord.status === 'contract_locked' && (
-                                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
-                                    Contrato Asegurado (Escrow 100%)
-                                  </span>
-                                )}
                               </div>
                             </div>
-
-                            {/* Stepper de Seguimiento Logístico */}
-                            <div className="b2b-stepper">
-                              <div className="b2b-step-item completed">
-                                <div className="b2b-step-circle">
-                                  <Check size={14} />
-                                </div>
-                                <span className="text-[11px] font-semibold text-gray-700">1. Solicitud Recibida</span>
-                              </div>
-
-                              <div className={`b2b-step-item ${ord.status !== 'submitted' ? 'completed' : 'active'}`}>
-                                <div className="b2b-step-circle">
-                                  {ord.status !== 'submitted' ? <Check size={14} /> : '2'}
-                                </div>
-                                <span className="text-[11px] font-semibold text-gray-700">2. Proforma / Aprobación</span>
-                              </div>
-
-                              <div className={`b2b-step-item ${ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? 'completed' : ''}`}>
-                                <div className="b2b-step-circle">
-                                  {ord.status === 'sample_dispatched' || ord.status === 'contract_locked' ? <Check size={14} /> : '3'}
-                                </div>
-                                <span className="text-[11px] font-semibold text-gray-700">3. Despacho Courier SENASA</span>
-                              </div>
-
-                              <div className={`b2b-step-item ${ord.status === 'contract_locked' ? 'completed' : ''}`}>
-                                <div className="b2b-step-circle">
-                                  {ord.status === 'contract_locked' ? <Check size={14} /> : '4'}
-                                </div>
-                                <span className="text-[11px] font-semibold text-gray-700">4. Arribo a Puerto / Escrow</span>
-                              </div>
-                            </div>
-
-                            {/* Caja de Logística e Información */}
-                            <div className="b2b-logistics-box">
-                              <div className="text-xs text-gray-700">
-                                <span className="font-semibold block text-[#1b4332]">Requerimiento:</span>
-                                {isSample ? 'Muestra técnica oficial de 500g' : `Lote comercial: ${ord.requestedKg.toLocaleString()} kg`} · Valor: ${ord.totalUsd.toLocaleString()} USD
-                              </div>
-
-                              {ord.trackingCode && (
-                                <div className="text-xs text-gray-700 font-mono">
-                                  <span className="text-gray-500 block font-sans">Guía Courier / Naviera:</span>
-                                  <span className="font-bold text-[#1b4332]">{ord.courier}: {ord.trackingCode}</span>
-                                </div>
-                              )}
-
-                              {ord.senasaGuide && (
-                                <div className="text-xs text-gray-700 font-mono">
-                                  <span className="text-gray-500 block font-sans">Precinto Fitosanitario:</span>
-                                  <span className="text-[#2d6a4f] font-semibold">{ord.senasaGuide}</span>
-                                </div>
-                              )}
-
-                              <div className="flex items-center gap-2">
-                                <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
-                                  Ver Lote en Marketplace
-                                </Link>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
                   </div>
                 )}
@@ -4241,7 +4673,133 @@ function B2BDashboardPage() {
                     </div>
                   </div>
                 )}
-              </>
+              
+                {/* 5. CONFIGURACIÓN DE CUENTA DEL COMPRADOR */}
+                {buyerTab === 'settings' && (
+                  <div className="space-y-6 max-w-4xl text-left">
+                    <div>
+                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Configuración de Cuenta & Seguridad</h2>
+                      <p className="text-xs text-gray-500">Gestiona tus credenciales de acceso, preferencias comerciales y seguridad corporativa.</p>
+                    </div>
+
+                    {/* Cambio de Contraseña */}
+                    <div className="b2b-settings-card">
+                      <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2 mb-3">
+                        <KeyRound size={16} className="text-[#2d6a4f]" /> Actualizar Contraseña de Acceso
+                      </h3>
+                      <form onSubmit={handleUpdatePassword} className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-gray-700 font-bold block mb-1">Contraseña Actual</label>
+                            <input
+                              type="password"
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-gray-700 font-bold block mb-1">Nueva Contraseña</label>
+                            <input
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Mínimo 8 caracteres"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-gray-700 font-bold block mb-1">Confirmar Contraseña</label>
+                            <input
+                              type="password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Confirmar"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                            />
+                          </div>
+                        </div>
+                        <button type="submit" className="button button-small button-primary text-xs">
+                          Actualizar Contraseña
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Preferencias Comerciales */}
+                    <div className="b2b-settings-card">
+                      <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2 mb-3">
+                        <Globe2 size={16} className="text-[#2d6a4f]" /> Preferencias Comerciales & Notificaciones
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <label className="text-gray-700 font-bold block mb-1">Moneda de Cotización</label>
+                          <select
+                            value={currencyPref}
+                            onChange={(e) => setCurrencyPref(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                          >
+                            <option value="USD">USD ($) Dólares Americanos</option>
+                            <option value="EUR">EUR (€) Euros</option>
+                            <option value="GBP">GBP (£) Libras Esterlinas</option>
+                            <option value="PEN">PEN (S/) Soles Peruanos</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-gray-700 font-bold block mb-1">Idioma de Notificaciones</label>
+                          <select
+                            value={languagePref}
+                            onChange={(e) => setLanguagePref(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                          >
+                            <option value="Español">Español</option>
+                            <option value="English">English</option>
+                            <option value="Français">Français</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-gray-100 space-y-2 text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifyRfq}
+                            onChange={(e) => setNotifyRfq(e.target.checked)}
+                            className="rounded border-gray-300 text-[#2d6a4f]"
+                          />
+                          <span>Notificarme inmediatamente cuando una cooperativa responda a una cotización</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifyCourier}
+                            onChange={(e) => setNotifyCourier(e.target.checked)}
+                            className="rounded border-gray-300 text-[#2d6a4f]"
+                          />
+                          <span>Avisos de despacho y actualización de guías courier DHL / SENASA</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Zona de Peligro: Eliminar Cuenta */}
+                    <div className="b2b-danger-zone">
+                      <h3 className="text-sm font-bold text-red-800 flex items-center gap-2 mb-1">
+                        <Trash2 size={16} /> Zona de Peligro: Eliminar Cuenta Corporativa
+                      </h3>
+                      <p className="text-xs text-red-600 mb-3">
+                        Al eliminar tu cuenta se cancelarán todas las cotizaciones abiertas, se desvincularán los pasaportes EUDR y se cerrará la sesión de forma irreversible.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsDeleteAccountModalOpen(true)}
+                        className="button button-small bg-red-600 text-white hover:bg-red-700 text-xs"
+                      >
+                        Eliminar Cuenta Definitivamente
+                      </button>
+                    </div>
+                  </div>
+                )}
+</>
             )}
 
             {/* ===================================================================
@@ -4249,66 +4807,180 @@ function B2BDashboardPage() {
                 =================================================================== */}
             {activeRole === 'seller' && (
               <>
-                {/* 1. RESUMEN DE VENTAS */}
+                {/* 1. RESUMEN DE VENTAS ENRIQUECIDO */}
                 {sellerTab === 'overview' && (
-                  <div>
-                    <div className="b2b-banner">
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                          <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-mono tracking-wider uppercase mb-2">
-                            Cooperativa Productora · RUC Agrario: {coopProfile.ruc}
-                          </span>
-                          <h1 className="text-2xl sm:text-3xl font-serif">{coopProfile.name}</h1>
-                          <p className="text-sm text-gray-200 mt-1">
-                            {coopProfile.community} · {coopProfile.department}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="px-3 py-1.5 rounded-lg bg-[#b07d3b] text-white text-xs font-bold font-mono">
-                            Gold Supplier Agroforestal
-                          </span>
-                          <span className="px-3 py-1.5 rounded-lg bg-[#112a20] text-emerald-300 text-xs font-semibold border border-emerald-500/30">
-                            Sentinel-2 Verificado (4,250 ha)
-                          </span>
+                  <div className="space-y-6">
+                    {/* Hero Panorámico Cuenca Amazónica */}
+                    <div
+                      className="b2b-overview-hero"
+                      style={{
+                        backgroundImage: `url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1600&q=80')`
+                      }}
+                    >
+                      <div className="b2b-overview-hero-content text-left">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-xs font-mono tracking-wider uppercase mb-2 backdrop-blur-xs">
+                              Cooperativa Productora · RUC Agrario: {coopProfile.ruc}
+                            </span>
+                            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white">{coopProfile.name}</h1>
+                            <p className="text-xs sm:text-sm text-gray-200 mt-1 max-w-xl">
+                              {coopProfile.community} · {coopProfile.department} · {coopProfile.indigenousCommunity || 'Pueblo Amahuaca'} ({coopProfile.nativeLanguage || 'Lengua Ancestral Pano'})
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1.5 rounded-lg bg-[#b07d3b] text-white text-xs font-bold font-mono shadow-xs">
+                              Gold Supplier Agroforestal
+                            </span>
+                            <span className="px-3 py-1.5 rounded-lg bg-[#112a20] text-emerald-400 text-xs font-bold font-mono border border-emerald-500/30">
+                              EUDR Verified In-Situ
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="b2b-kpis-grid">
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Lotes en Vitrina</span>
-                          <Store size={18} className="text-[#2d6a4f]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalLotsPublished}</p>
-                        <p className="text-xs text-gray-500 mt-1">Cosechas activas en marketplace</p>
+                    {/* KPIs de Vendedor */}
+                    <div className="b2b-kpi-grid">
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Cosechas Publicadas</span>
+                        <p className="text-2xl font-serif font-bold text-[#1b4332] mt-1">{totalLotsPublished}</p>
+                        <p className="text-xs text-gray-500 mt-1">Lotes verificados en vitrina</p>
                       </div>
-
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Stock Disponible</span>
-                          <Layers size={18} className="text-[#b07d3b]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{totalStockKg.toLocaleString()} kg</p>
-                        <p className="text-xs text-gray-500 mt-1">Almacén Callao y Puerto Maldonado</p>
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Stock Total Disponible</span>
+                        <p className="text-2xl font-serif font-bold text-[#1b4332] mt-1">{totalStockKg.toLocaleString()} kg</p>
+                        <p className="text-xs text-gray-500 mt-1">Acopio en comunidad listo para puerto</p>
                       </div>
-
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Solicitudes RFQ</span>
-                          <Clock size={18} className="text-[#1b4332]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">{pendingRfqsCount}</p>
-                        <p className="text-xs text-gray-500 mt-1">Cotizaciones pendientes de respuesta</p>
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Solicitudes RFQ Pendientes</span>
+                        <p className="text-2xl font-serif font-bold text-amber-600 mt-1">{pendingRfqsCount}</p>
+                        <p className="text-xs text-gray-500 mt-1">Compradores esperando respuesta</p>
                       </div>
-
-                      <div className="b2b-kpi-card">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs uppercase tracking-wider text-gray-500 font-sans">Ingresos Proyectados</span>
-                          <TrendingUp size={18} className="text-[#2d6a4f]" />
-                        </div>
-                        <p className="text-3xl font-serif font-bold text-[#1b4332] mt-3">$98,400 USD</p>
+                      <div className="b2b-kpi-card text-left">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ingresos Proyectados</span>
+                        <p className="text-2xl font-serif font-bold text-[#2d6a4f] mt-1">$48,250 USD</p>
                         <p className="text-xs text-gray-500 mt-1">Contratos FOB temporada 2025</p>
+                      </div>
+                    </div>
+
+                    {/* Widgets de Resumen Enriquecido para Vendedor (2x2 Grid) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* Widget 1: Solicitudes RFQ Recientes */}
+                      <div className="b2b-widget-card">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                          <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                            <Clock size={16} className="text-[#2d6a4f]" /> Solicitudes Comerciales Recientes
+                          </h3>
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            {orders.length} RFQs
+                          </span>
+                        </div>
+                        <div className="space-y-2.5 text-left text-xs">
+                          {orders.slice(0, 2).map((ord) => (
+                            <div key={ord.id} className="p-2.5 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-between">
+                              <div>
+                                <p className="font-bold text-[#1b4332]">{ord.buyerOrg} <span className="font-normal text-gray-500">({ord.buyerCountry})</span></p>
+                                <span className="text-[11px] text-gray-600">{ord.lotName} · {ord.requestedKg} kg</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedOrderId(ord.id);
+                                  setSellerTab('orders');
+                                }}
+                                className="button button-small button-outline text-[11px] py-1 px-2.5"
+                              >
+                                Responder en Chat
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Widget 2: Inventario Rápido de Cosechas */}
+                      <div className="b2b-widget-card">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                          <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                            <Boxes size={16} className="text-[#2d6a4f]" /> Cosechas en Acopio Comunitario
+                          </h3>
+                          <button
+                            onClick={() => setIsCreateLotModalOpen(true)}
+                            className="text-[11px] font-bold text-[#2d6a4f] hover:text-[#1b4332]"
+                          >
+                            + Publicar Cosecha
+                          </button>
+                        </div>
+                        <div className="space-y-2 text-left text-xs">
+                          {lots.slice(0, 2).map((l) => (
+                            <div key={l.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
+                              <div className="flex items-center gap-2.5">
+                                <img src={l.image} alt={l.name} className="w-10 h-10 rounded-md object-cover border border-gray-200" />
+                                <div>
+                                  <p className="font-bold text-[#1b4332] truncate max-w-[160px]">{l.name}</p>
+                                  <span className="text-[10px] text-gray-500">Stock: {l.availableKg.toLocaleString()} kg · FOB: ${l.priceFob.toFixed(2)}/kg</span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleOpenEditLot(l)}
+                                className="button button-small button-outline text-[10px] py-0.5 px-2"
+                              >
+                                <Edit3 size={11} /> Editar
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Widget 3: Pasaporte y QR Digital de la Cooperativa */}
+                      <div className="b2b-widget-card flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                            <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                              <QrCode size={16} className="text-[#2d6a4f]" /> Pasaporte y QR Digital Comunitario
+                            </h3>
+                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                              Activo
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 text-left">
+                            Código QR único de la organización para imprimir en sacos de exportación GrainPro, rotulados y credenciales de ferias internacionales.
+                          </p>
+                        </div>
+                        <div className="pt-3 text-left">
+                          <button
+                            type="button"
+                            onClick={() => setShowSellerQrModal(true)}
+                            className="button button-small button-primary text-xs w-full justify-center"
+                            data-testid="btn-open-seller-qr"
+                          >
+                            <QrCode size={13} /> Ver / Descargar QR para Empaques y Ferias
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Widget 4: Monitoreo Sentinel-2 */}
+                      <div className="b2b-widget-card flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                            <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2">
+                              <ShieldCheck size={16} className="text-[#2d6a4f]" /> Custodia Territorial Sentinel-2
+                            </h3>
+                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                              Cero Alertas GLAD
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 text-left">
+                            4,250 hectáreas de bosque primario custodiadas con resolución forestal SERFOR-MDD-042. Salud del dosel NDVI 0.89 promedio.
+                          </p>
+                        </div>
+                        <div className="pt-3 text-left">
+                          <button
+                            onClick={() => setSellerTab('satellite')}
+                            className="button button-small button-outline text-xs w-full justify-center"
+                          >
+                            <Eye size={13} /> Ver Auditoría Satelital Completa
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -4330,10 +5002,13 @@ function B2BDashboardPage() {
                           className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-sans text-gray-700"
                         >
                           <option value="all">Todas las solicitudes ({orders.length})</option>
-                          <option value="submitted">Nuevas (Acción requerida)</option>
-                          <option value="quoted">Cotizaciones Aprobadas</option>
-                          <option value="sample_dispatched">Muestras en Tránsito</option>
-                          <option value="contract_locked">Contratos Cerrados</option>
+                          <option value="submitted">Nuevas (Por Revisar)</option>
+                          <option value="quoted">Cotizaciones Enviadas</option>
+                          <option value="sample_preparing">Muestras en Preparación</option>
+                          <option value="sample_dispatched">Muestras Despachadas (DHL)</option>
+                          <option value="sample_delivered">Muestras Entregadas</option>
+                          <option value="contract_locked">Contratos con Escrow</option>
+                          <option value="customs_cleared">Aduanas / Puerto Callao</option>
                         </select>
                       </div>
                     </div>
@@ -4396,9 +5071,24 @@ function B2BDashboardPage() {
                                             Muestra Despachada
                                           </span>
                                         )}
+                                        {ord.status === 'sample_preparing' && (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-100 text-indigo-800">
+                                            En Preparación
+                                          </span>
+                                        )}
+                                        {ord.status === 'sample_delivered' && (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-teal-100 text-teal-800">
+                                            Muestra Entregada
+                                          </span>
+                                        )}
                                         {ord.status === 'contract_locked' && (
                                           <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800">
                                             Escrow Formalizado
+                                          </span>
+                                        )}
+                                        {ord.status === 'customs_cleared' && (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-100 text-cyan-800">
+                                            Arribo a Puerto
                                           </span>
                                         )}
                                         <span className="text-[10px] text-gray-400">{ord.buyerCountry}</span>
@@ -4500,6 +5190,14 @@ function B2BDashboardPage() {
                                   <button
                                     onClick={() => {
                                       updateOrderStatus(selectedOrder.id, 'quoted');
+                                      const sysMsg = {
+                                        id: 'msg-' + Date.now(),
+                                        sender: 'system' as const,
+                                        senderName: 'Sistema Comercial TrazAmazon',
+                                        text: `Cotización formal aprobada a $${selectedOrder.pricePerKg.toFixed(2)} USD/kg FOB Callao. Documento enviado al comprador.`,
+                                        timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+                                      };
+                                      setOrderConversations(prev => ({ ...prev, [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg] }));
                                       showNotice(`Cotización para orden ${selectedOrder.id} aprobada con éxito.`);
                                     }}
                                     className="b2b-action-btn-green text-xs"
@@ -4509,35 +5207,72 @@ function B2BDashboardPage() {
                                   </button>
                                   <button
                                     onClick={() => {
-                                      const tracking = 'DHL-PE-' + Math.floor(1000000 + Math.random() * 9000000);
-                                      const senasa = 'SENASA-MDD-2025-' + Math.floor(1000 + Math.random() * 9000);
-                                      updateOrderStatus(selectedOrder.id, 'sample_dispatched', {
-                                        trackingCode: tracking,
-                                        courier: 'DHL Green Express',
-                                        senasaGuide: senasa,
-                                      });
+                                      updateOrderStatus(selectedOrder.id, 'sample_preparing');
                                       const sysMsg = {
                                         id: 'msg-' + Date.now(),
                                         sender: 'system' as const,
-                                        senderName: 'Tracking Logístico DHL',
-                                        text: `Muestra despachada para ${selectedOrder.buyerOrg}. Guía Courier: ${tracking} y precinto fitosanitario ${senasa}.`,
+                                        senderName: 'Control de Calidad Cooperativa',
+                                        text: 'Muestra técnica en proceso de selección de grano, secado y sellado hermético GrainPro en centro de acopio.',
                                         timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
                                       };
-                                      setOrderConversations(prev => ({
-                                        ...prev,
-                                        [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg]
-                                      }));
-                                      showNotice(`Muestra despachada. Guía ${tracking}.`);
+                                      setOrderConversations(prev => ({ ...prev, [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg] }));
+                                      showNotice('Muestra técnica en preparación.');
                                     }}
                                     className="b2b-action-btn-brown text-xs"
-                                    data-testid={`btn-dispatch-sample-${selectedOrder.id}`}
                                   >
-                                    <Truck size={14} /> Despachar Muestra DHL (SENASA)
+                                    <FlaskConical size={14} /> Preparar Muestra
                                   </button>
                                 </>
                               )}
 
-                              {(selectedOrder.status === 'quoted' || selectedOrder.status === 'sample_dispatched') && (
+                              {(selectedOrder.status === 'quoted' || selectedOrder.status === 'sample_preparing') && (
+                                <button
+                                  onClick={() => {
+                                    const tracking = 'DHL-PE-' + Math.floor(1000000 + Math.random() * 9000000);
+                                    const senasa = 'SENASA-MDD-2025-' + Math.floor(1000 + Math.random() * 9000);
+                                    updateOrderStatus(selectedOrder.id, 'sample_dispatched', {
+                                      trackingCode: tracking,
+                                      courier: 'DHL Green Express',
+                                      senasaGuide: senasa,
+                                    });
+                                    const sysMsg = {
+                                      id: 'msg-' + Date.now(),
+                                      sender: 'system' as const,
+                                      senderName: 'Tracking Logístico DHL',
+                                      text: `Muestra despachada para ${selectedOrder.buyerOrg}. Guía Courier: ${tracking} y precinto fitosanitario ${senasa}.`,
+                                      timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+                                    };
+                                    setOrderConversations(prev => ({ ...prev, [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg] }));
+                                    showNotice(`Muestra despachada con guía ${tracking}.`);
+                                  }}
+                                  className="b2b-action-btn-brown text-xs"
+                                  data-testid={`btn-dispatch-sample-${selectedOrder.id}`}
+                                >
+                                  <Truck size={14} /> Despachar Muestra DHL
+                                </button>
+                              )}
+
+                              {selectedOrder.status === 'sample_dispatched' && (
+                                <button
+                                  onClick={() => {
+                                    updateOrderStatus(selectedOrder.id, 'sample_delivered');
+                                    const sysMsg = {
+                                      id: 'msg-' + Date.now(),
+                                      sender: 'system' as const,
+                                      senderName: 'Courier DHL Internacional',
+                                      text: `Muestra entregada con éxito en laboratorio del comprador (${selectedOrder.buyerCountry}). Firma de recepción registrada.`,
+                                      timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+                                    };
+                                    setOrderConversations(prev => ({ ...prev, [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg] }));
+                                    showNotice('Muestra confirmada como entregada en destino.');
+                                  }}
+                                  className="button button-small button-outline text-xs"
+                                >
+                                  <CheckCircle2 size={14} /> Confirmar Entrega de Muestra
+                                </button>
+                              )}
+
+                              {(selectedOrder.status === 'quoted' || selectedOrder.status === 'sample_dispatched' || selectedOrder.status === 'sample_delivered') && (
                                 <button
                                   onClick={() => {
                                     updateOrderStatus(selectedOrder.id, 'contract_locked', {
@@ -4553,16 +5288,36 @@ function B2BDashboardPage() {
                                       text: `Contrato comercial formalizado para ${selectedOrder.buyerOrg}. Fondos en custodia Escrow asegurados al 100%.`,
                                       timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
                                     };
-                                    setOrderConversations(prev => ({
-                                      ...prev,
-                                      [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg]
-                                    }));
+                                    setOrderConversations(prev => ({ ...prev, [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg] }));
                                     showNotice(`Contrato con Escrow formalizado para ${selectedOrder.buyerOrg}.`);
                                   }}
                                   className="b2b-action-btn-green text-xs"
                                   data-testid={`btn-lock-contract-${selectedOrder.id}`}
                                 >
                                   <ShieldCheck size={14} /> Formalizar Contrato con Escrow
+                                </button>
+                              )}
+
+                              {selectedOrder.status === 'contract_locked' && (
+                                <button
+                                  onClick={() => {
+                                    updateOrderStatus(selectedOrder.id, 'customs_cleared', {
+                                      trackingCode: 'MAERSK-FCL-PE-4921',
+                                      courier: 'Naviera Maersk Line',
+                                    });
+                                    const sysMsg = {
+                                      id: 'msg-' + Date.now(),
+                                      sender: 'system' as const,
+                                      senderName: 'Agencia de Aduanas Callao',
+                                      text: 'Carga inspeccionada por SENASA y aduanas SUNAT. Embarque FCL completado con destino a Europa.',
+                                      timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+                                    };
+                                    setOrderConversations(prev => ({ ...prev, [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg] }));
+                                    showNotice('Embarque marítimo y despacho aduanero registrado con éxito.');
+                                  }}
+                                  className="button button-small button-primary text-xs"
+                                >
+                                  <Ship size={14} /> Registrar Embarque Puerto Callao
                                 </button>
                               )}
                             </div>
@@ -5135,6 +5890,130 @@ function B2BDashboardPage() {
                   </div>
                 )}
 
+                {/* 7. CONFIGURACIÓN DE CUENTA DE LA COOPERATIVA */}
+                {sellerTab === 'settings' && (
+                  <div className="space-y-6 max-w-4xl text-left">
+                    <div>
+                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Configuración de Cuenta & Seguridad</h2>
+                      <p className="text-xs text-gray-500">Actualiza contraseñas de dirigentes autorizados, preferencias de cobro y seguridad de la organización.</p>
+                    </div>
+
+                    {/* Cambio de Contraseña */}
+                    <div className="b2b-settings-card">
+                      <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2 mb-3">
+                        <KeyRound size={16} className="text-[#2d6a4f]" /> Actualizar Contraseña del Panel de Ventas
+                      </h3>
+                      <form onSubmit={handleUpdatePassword} className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-gray-700 font-bold block mb-1">Contraseña Actual</label>
+                            <input
+                              type="password"
+                              value={currentPassword}
+                              onChange={(e) => setCurrentPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-gray-700 font-bold block mb-1">Nueva Contraseña</label>
+                            <input
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Mínimo 8 caracteres"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-gray-700 font-bold block mb-1">Confirmar Contraseña</label>
+                            <input
+                              type="password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Confirmar"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                            />
+                          </div>
+                        </div>
+                        <button type="submit" className="button button-small button-primary text-xs">
+                          Actualizar Contraseña de Cooperativa
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Preferencias Comerciales */}
+                    <div className="b2b-settings-card">
+                      <h3 className="text-sm font-bold text-[#1b4332] flex items-center gap-2 mb-3">
+                        <Globe2 size={16} className="text-[#2d6a4f]" /> Moneda de Liquidación & Alertas de Negociación
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <label className="text-gray-700 font-bold block mb-1">Moneda Principal de Cotización</label>
+                          <select
+                            value={currencyPref}
+                            onChange={(e) => setCurrencyPref(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                          >
+                            <option value="USD">USD ($) Dólares Americanos (Incoterm FOB)</option>
+                            <option value="EUR">EUR (€) Euros</option>
+                            <option value="PEN">PEN (S/) Soles Peruanos</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-gray-700 font-bold block mb-1">Idioma de Notificación</label>
+                          <select
+                            value={languagePref}
+                            onChange={(e) => setLanguagePref(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                          >
+                            <option value="Español">Español</option>
+                            <option value="English">English</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-gray-100 space-y-2 text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifyRfq}
+                            onChange={(e) => setNotifyRfq(e.target.checked)}
+                            className="rounded border-gray-300 text-[#2d6a4f]"
+                          />
+                          <span>Alertas inmediatas ante nuevas solicitudes RFQ de compradores europeos</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={notifyCourier}
+                            onChange={(e) => setNotifyCourier(e.target.checked)}
+                            className="rounded border-gray-300 text-[#2d6a4f]"
+                          />
+                          <span>Avisos de recepción de muestras en laboratorios internacionales</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Zona de Peligro: Eliminar Cuenta */}
+                    <div className="b2b-danger-zone">
+                      <h3 className="text-sm font-bold text-red-800 flex items-center gap-2 mb-1">
+                        <Trash2 size={16} /> Zona de Peligro: Eliminar Cuenta de la Cooperativa
+                      </h3>
+                      <p className="text-xs text-red-600 mb-3">
+                        Al dar de baja la organización se retirarán todos los lotes del marketplace, se desactivarán los pasaportes EUDR y se cerrará la cuenta comercial.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsDeleteAccountModalOpen(true)}
+                        className="button button-small bg-red-600 text-white hover:bg-red-700 text-xs"
+                      >
+                        Eliminar Cooperativa de la Plataforma
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 </>
             )}
           </div>
@@ -5271,77 +6150,343 @@ function B2BDashboardPage() {
         </div>
       )}
 
-      {/* MODAL EDITAR COSECHA / LOTE */}
+      {/* MODAL EDITAR COSECHA / LOTE EXHAUSTIVO (TODO LO QUE SALE EN /lote/:id) */}
       {isEditLotModalOpen && editingLot && (
         <div className="b2b-modal-backdrop" onClick={() => setIsEditLotModalOpen(false)}>
-          <div className="b2b-modal-panel p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="b2b-modal-panel p-6 max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-serif font-bold text-[#1b4332]">Editar Lote · {editingLot.id}</h3>
-                <p className="text-xs text-gray-500">Actualiza las condiciones de venta, stock y perfil de cata.</p>
+              <div className="text-left">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-serif font-bold text-[#1b4332]">
+                    Editor Exhaustivo de Ficha Técnica · Lote #{editingLot.id}
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#2d6a4f] bg-[#e8f1ec] px-2 py-0.5 rounded">
+                    {editingLot.fruit}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Los cambios se sincronizan en vivo con la ficha pública del lote (/lote/{editingLot.id}) y el marketplace B2B.
+                </p>
               </div>
               <button onClick={() => setIsEditLotModalOpen(false)} className="text-gray-400 hover:text-gray-700">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditLot} className="space-y-4 pt-4 text-left">
-              <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Nombre Comercial</label>
-                <input
-                  type="text"
-                  required
-                  value={editingLot.name}
-                  onChange={(e) => setEditingLot({ ...editingLot, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
-                  data-testid="input-edit-lot-name"
-                />
+            <form onSubmit={handleSaveEditLot} className="space-y-6 pt-4 text-left">
+              {/* SECCIÓN 1: IDENTIFICACIÓN & PRECIOS ESCALONADOS */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2d6a4f] border-b border-gray-100 pb-1">
+                  1. Información Comercial & Precios por Volumen
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Nombre Comercial de la Cosecha</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingLot.name}
+                      onChange={(e) => setEditingLot({ ...editingLot, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                      data-testid="input-edit-lot-name"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Etiqueta de Cosecha / Temporada</label>
+                    <input
+                      type="text"
+                      value={editingLot.harvestTag}
+                      onChange={(e) => setEditingLot({ ...editingLot, harvestTag: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Stock Disp. (kg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editingLot.availableKg}
+                      onChange={(e) => setEditingLot({ ...editingLot, availableKg: Number(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Stock Total (kg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editingLot.totalKg}
+                      onChange={(e) => setEditingLot({ ...editingLot, totalKg: Number(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Pedido Mínimo (MOQ)</label>
+                    <input
+                      type="text"
+                      value={editingLot.minimumMoq}
+                      onChange={(e) => setEditingLot({ ...editingLot, minimumMoq: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Tiempo a Puerto Callao</label>
+                    <input
+                      type="text"
+                      value={editingLot.dispatchTime || '10 – 15 días'}
+                      onChange={(e) => setEditingLot({ ...editingLot, dispatchTime: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Precios escalonados */}
+                <div className="p-3 bg-[#faf6f0] rounded-xl border border-gray-200">
+                  <span className="text-[11px] font-bold text-[#1b4332] block mb-2">
+                    Precios Escalonados por Volumen (FOB Callao / Alibaba B2B Style)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <span className="text-[10px] text-gray-600 block">Tier 1: 500 – 2,000 kg ($/kg)</span>
+                      <input
+                        type="number"
+                        step="0.05"
+                        value={editingLot.priceFob}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setEditingLot({
+                            ...editingLot,
+                            priceFob: val,
+                            tieredPricing: {
+                              tier1Range: editingLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                              tier1Price: val,
+                              tier2Range: editingLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                              tier2Price: editingLot.tieredPricing?.tier2Price || (val * 0.94),
+                              tier3Range: editingLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                              tier3Price: editingLot.tieredPricing?.tier3Price || (val * 0.86),
+                            }
+                          });
+                        }}
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded font-mono font-bold text-[#1b4332]"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-600 block">Tier 2: 2,001 – 10,000 kg ($/kg)</span>
+                      <input
+                        type="number"
+                        step="0.05"
+                        value={editingLot.tieredPricing?.tier2Price || (editingLot.priceFob * 0.94)}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setEditingLot({
+                            ...editingLot,
+                            tieredPricing: {
+                              tier1Range: editingLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                              tier1Price: editingLot.priceFob,
+                              tier2Range: editingLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                              tier2Price: val,
+                              tier3Range: editingLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                              tier3Price: editingLot.tieredPricing?.tier3Price || (editingLot.priceFob * 0.86),
+                            }
+                          });
+                        }}
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded font-mono font-bold text-[#1b4332]"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-600 block">Tier 3: ≥ 10,000 kg FCL ($/kg)</span>
+                      <input
+                        type="number"
+                        step="0.05"
+                        value={editingLot.tieredPricing?.tier3Price || (editingLot.priceFob * 0.86)}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setEditingLot({
+                            ...editingLot,
+                            tieredPricing: {
+                              tier1Range: editingLot.tieredPricing?.tier1Range || '500 – 2,000 kg',
+                              tier1Price: editingLot.priceFob,
+                              tier2Range: editingLot.tieredPricing?.tier2Range || '2,001 – 10,000 kg',
+                              tier2Price: editingLot.tieredPricing?.tier2Price || (editingLot.priceFob * 0.94),
+                              tier3Range: editingLot.tieredPricing?.tier3Range || '≥ 10,000 kg (FCL)',
+                              tier3Price: val,
+                            }
+                          });
+                        }}
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded font-mono font-bold text-[#1b4332]"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* SECCIÓN 2: CONTROL DE CALIDAD FÍSICO-QUÍMICO (LABORATORIO) */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2d6a4f] border-b border-gray-100 pb-1">
+                  2. Control de Calidad de Laboratorio (Ficha Físico-Química)
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Humedad Final (%)</label>
+                    <input
+                      type="text"
+                      value={editingLot.chemicalSpecs?.humidityPct || editingLot.specs.v1}
+                      onChange={(e) => setEditingLot({
+                        ...editingLot,
+                        specs: { ...editingLot.specs, v1: e.target.value },
+                        chemicalSpecs: { ...editingLot.chemicalSpecs, humidityPct: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Fermentación (%)</label>
+                    <input
+                      type="text"
+                      value={editingLot.chemicalSpecs?.fermentationPct || editingLot.specs.v2}
+                      onChange={(e) => setEditingLot({
+                        ...editingLot,
+                        specs: { ...editingLot.specs, v2: e.target.value },
+                        chemicalSpecs: { ...editingLot.chemicalSpecs, fermentationPct: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Altitud Cultivo</label>
+                    <input
+                      type="text"
+                      value={editingLot.chemicalSpecs?.altitude || editingLot.specs.v3}
+                      onChange={(e) => setEditingLot({
+                        ...editingLot,
+                        specs: { ...editingLot.specs, v3: e.target.value },
+                        chemicalSpecs: { ...editingLot.chemicalSpecs, altitude: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Cadmio / Metales Pesados</label>
+                    <input
+                      type="text"
+                      value={editingLot.chemicalSpecs?.cadmiumPpm || '< 0.28 ppm (Aprobado UE)'}
+                      onChange={(e) => setEditingLot({
+                        ...editingLot,
+                        chemicalSpecs: { ...editingLot.chemicalSpecs, cadmiumPpm: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Puntaje Sensorial SCAA</label>
+                    <input
+                      type="text"
+                      value={editingLot.sensoryScore}
+                      onChange={(e) => setEditingLot({ ...editingLot, sensoryScore: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Empaque de Exportación</label>
+                    <input
+                      type="text"
+                      value={editingLot.chemicalSpecs?.packaging || 'Hermético GrainPro'}
+                      onChange={(e) => setEditingLot({
+                        ...editingLot,
+                        chemicalSpecs: { ...editingLot.chemicalSpecs, packaging: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECCIÓN 3: DESCRIPTORES SENSORIALES & HISTORIA */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2d6a4f] border-b border-gray-100 pb-1">
+                  3. Perfil Sensorial & Notas de Cata
+                </h4>
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Stock Disponible (kg)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editingLot.availableKg}
-                    onChange={(e) => setEditingLot({ ...editingLot, availableKg: Number(e.target.value) })}
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Notas Sensoriales & Descriptores de Cata</label>
+                  <textarea
+                    rows={2}
+                    value={editingLot.sensoryNotes}
+                    onChange={(e) => setEditingLot({ ...editingLot, sensoryNotes: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Precio FOB ($/kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    value={editingLot.priceFob}
-                    onChange={(e) => setEditingLot({ ...editingLot, priceFob: Number(e.target.value) })}
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Historia de la Parcela & Cultivo bajo Dosel</label>
+                  <textarea
+                    rows={2}
+                    value={editingLot.story}
+                    onChange={(e) => setEditingLot({ ...editingLot, story: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
                   />
                 </div>
+              </div>
+
+              {/* SECCIÓN 4: PRODUCTOR & IDENTIDAD BIOCULTURAL */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#2d6a4f] border-b border-gray-100 pb-1">
+                  4. Productor Líder & Origen Biocultural
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Nombre del Productor(a) Líder</label>
+                    <input
+                      type="text"
+                      value={editingLot.farmerName}
+                      onChange={(e) => setEditingLot({ ...editingLot, farmerName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">URL Foto del Productor</label>
+                    <input
+                      type="text"
+                      value={editingLot.farmerImage}
+                      onChange={(e) => setEditingLot({ ...editingLot, farmerImage: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Pueblo Originario / Comunidad Nativa</label>
+                    <input
+                      type="text"
+                      value={editingLot.indigenousCommunity || 'Pueblo Amahuaca'}
+                      onChange={(e) => setEditingLot({ ...editingLot, indigenousCommunity: e.target.value })}
+                      placeholder="Ej. Pueblo Amahuaca, Nación Asháninka"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Lengua Ancestral / Familia Lingüística</label>
+                    <input
+                      type="text"
+                      value={editingLot.nativeLanguage || 'Amahuaca (Familia Pano)'}
+                      onChange={(e) => setEditingLot({ ...editingLot, nativeLanguage: e.target.value })}
+                      placeholder="Ej. Amahuaca (Familia Pano), Asháninka (Arawak)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Puntaje Sensorial</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">URL Fotografía Principal del Lote (Grano / Fruto)</label>
                   <input
                     type="text"
-                    value={editingLot.sensoryScore}
-                    onChange={(e) => setEditingLot({ ...editingLot, sensoryScore: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                    value={editingLot.image}
+                    onChange={(e) => setEditingLot({ ...editingLot, image: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Notas Sensoriales / Descriptores</label>
-                <textarea
-                  rows={2}
-                  value={editingLot.sensoryNotes}
-                  onChange={(e) => setEditingLot({ ...editingLot, sensoryNotes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => setIsEditLotModalOpen(false)}
@@ -5354,7 +6499,7 @@ function B2BDashboardPage() {
                   className="button button-primary text-xs flex items-center gap-1.5"
                   data-testid="btn-save-lot-changes"
                 >
-                  <Save size={14} /> Guardar Cambios del Lote
+                  <Save size={14} /> Guardar Ficha Completa del Lote
                 </button>
               </div>
             </form>
@@ -5362,7 +6507,146 @@ function B2BDashboardPage() {
         </div>
       )}
 
-      <Footer />
+      {/* MODAL QR OFICIAL DEL VENDEDOR / COOPERATIVA */}
+      {showSellerQrModal && (
+        <div className="b2b-modal-backdrop" onClick={() => setShowSellerQrModal(false)}>
+          <div className="b2b-modal-panel p-6 max-w-md text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+              <div className="text-left">
+                <h3 className="text-base font-serif font-bold text-[#1b4332]">QR Único de Cooperativa</h3>
+                <p className="text-xs text-gray-500">Credencial verificada para rotulado de sacos y ferias.</p>
+              </div>
+              <button onClick={() => setShowSellerQrModal(false)} className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-6 flex flex-col items-center">
+              <div className="b2b-qr-box mb-4">
+                <svg width="180" height="180" viewBox="0 0 180 180" fill="none" className="rounded-lg">
+                  <rect width="180" height="180" fill="white" />
+                  <rect x="15" y="15" width="45" height="45" fill="#1b4332" rx="4" />
+                  <rect x="23" y="23" width="29" height="29" fill="white" rx="2" />
+                  <rect x="30" y="30" width="15" height="15" fill="#1b4332" />
+
+                  <rect x="120" y="15" width="45" height="45" fill="#1b4332" rx="4" />
+                  <rect x="128" y="23" width="29" height="29" fill="white" rx="2" />
+                  <rect x="135" y="30" width="15" height="15" fill="#1b4332" />
+
+                  <rect x="15" y="120" width="45" height="45" fill="#1b4332" rx="4" />
+                  <rect x="23" y="128" width="29" height="29" fill="white" rx="2" />
+                  <rect x="30" y="135" width="15" height="15" fill="#1b4332" />
+
+                  <rect x="70" y="20" width="12" height="12" fill="#2d6a4f" />
+                  <rect x="90" y="20" width="12" height="12" fill="#1b4332" />
+                  <rect x="70" y="40" width="20" height="10" fill="#1b4332" />
+                  <rect x="20" y="70" width="15" height="12" fill="#1b4332" />
+                  <rect x="45" y="70" width="12" height="12" fill="#2d6a4f" />
+                  <rect x="70" y="70" width="40" height="40" fill="#1b4332" rx="4" />
+                  <rect x="80" y="80" width="20" height="20" fill="white" />
+                  <rect x="85" y="85" width="10" height="10" fill="#b07d3b" />
+                  <rect x="120" y="70" width="15" height="15" fill="#1b4332" />
+                  <rect x="145" y="70" width="20" height="12" fill="#2d6a4f" />
+                  <rect x="20" y="95" width="15" height="12" fill="#2d6a4f" />
+                  <rect x="45" y="95" width="12" height="15" fill="#1b4332" />
+                  <rect x="120" y="95" width="15" height="15" fill="#2d6a4f" />
+                  <rect x="145" y="95" width="15" height="15" fill="#1b4332" />
+                  <rect x="70" y="120" width="15" height="15" fill="#1b4332" />
+                  <rect x="95" y="120" width="15" height="15" fill="#2d6a4f" />
+                  <rect x="120" y="120" width="20" height="20" fill="#1b4332" />
+                  <rect x="150" y="120" width="15" height="15" fill="#2d6a4f" />
+                  <rect x="70" y="145" width="20" height="15" fill="#2d6a4f" />
+                  <rect x="100" y="145" width="15" height="15" fill="#1b4332" />
+                  <rect x="130" y="150" width="30" height="12" fill="#1b4332" />
+                </svg>
+                <span className="text-[10px] font-mono text-gray-500 mt-2">
+                  RUC: {coopProfile.ruc} · {coopProfile.community}
+                </span>
+              </div>
+
+              <h4 className="font-serif font-bold text-base text-[#1b4332]">{coopProfile.name}</h4>
+              <p className="text-xs text-gray-500 mt-1">
+                Pueblo Originario: <b>{coopProfile.indigenousCommunity || 'Pueblo Amahuaca'}</b> · {coopProfile.department}
+              </p>
+              <p className="text-[11px] font-mono text-emerald-800 mt-1">
+                Certificación: Gold Supplier Agroforestal EUDR
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-3 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://trazamazon.org/cooperativa/${coopProfile.id}`);
+                  alert('Enlace del perfil comunitario copiado al portapapeles.');
+                }}
+                className="button button-small button-outline text-xs"
+              >
+                <Copy size={13} /> Copiar Enlace
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert('Etiqueta oficial descargada en alta resolución lista para impresión.');
+                  setShowSellerQrModal(false);
+                }}
+                className="button button-small button-primary text-xs"
+              >
+                <Download size={13} /> Descargar Rótulo de Empaque
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ELIMINAR CUENTA (ZONA DE PELIGRO) */}
+      {isDeleteAccountModalOpen && (
+        <div className="b2b-modal-backdrop" onClick={() => setIsDeleteAccountModalOpen(false)}>
+          <div className="b2b-modal-panel p-6 max-w-md text-left" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+              <h3 className="text-base font-serif font-bold text-red-800 flex items-center gap-2">
+                <Trash2 size={18} /> Confirmar Eliminación de Cuenta
+              </h3>
+              <button onClick={() => setIsDeleteAccountModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3 text-xs text-gray-700">
+              <p className="bg-red-50 p-3 rounded-lg border border-red-200 text-red-800 font-semibold">
+                ¡Atención! Esta acción es permanente e irreversible. Se perderá el acceso a todos los pasaportes EUDR, historial de trazabilidad y contratos comerciales asociados.
+              </p>
+              <p>
+                Para confirmar la eliminación definitiva, por favor escribe el nombre exacto de tu organización: <b className="text-gray-900">{activeRole === 'buyer' ? 'Valrhona Artisans B2B' : coopProfile.name}</b>
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Escribe el nombre aquí..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setIsDeleteAccountModalOpen(false)}
+                className="button button-outline text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                className="button button-small bg-red-600 text-white hover:bg-red-700 text-xs font-bold"
+              >
+                Confirmar Eliminación Definitiva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}<Footer />
     </main>
   );
 }

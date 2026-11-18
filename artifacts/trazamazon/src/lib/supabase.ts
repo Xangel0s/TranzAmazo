@@ -30,6 +30,9 @@ export interface CooperativeProfile {
   contactEmail: string;
   whatsappPhone: string;
   escrowAccount: string;
+  indigenousCommunity?: string;
+  nativeLanguage?: string;
+  ancestralCosmovision?: string;
   updatedAt?: string;
 }
 
