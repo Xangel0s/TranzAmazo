@@ -690,4 +690,258 @@ button,a { -webkit-tap-highlight-color: transparent; }
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
 }
 
+/* ==========================================================================
+   ALIBABA-INSPIRED B2B PRODUCT & SELLER PROFILE COMPONENTS
+   ========================================================================== */
+
+.alibaba-supplier-bar {
+  background: #ffffff;
+  border: 1px solid rgba(11, 41, 27, 0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(11, 41, 27, 0.04);
+}
+
+.gold-supplier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fdf5e6;
+  border: 1px solid #d4a373;
+  color: #954a17;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tiered-pricing-box {
+  background: #f5f4ef;
+  border: 1px solid rgba(11, 41, 27, 0.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.tiered-col {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid rgba(11, 41, 27, 0.05);
+}
+
+.tiered-col span:first-child {
+  font-size: 10px;
+  color: #727973;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.tiered-col strong {
+  font-size: 18px;
+  color: #001208;
+  font-family: var(--app-font-serif);
+}
+
+.tiered-col span:last-child {
+  font-size: 10px;
+  color: #2a7a4c;
+  font-weight: 600;
+}
+
+.seller-more-products-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .tiered-pricing-box {
+    grid-template-columns: 1fr;
+  }
+  .seller-more-products-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   AUTHENTICATION & ROLE SELECTION COMPONENTS
+   ========================================================================== */
+
+.header-auth-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-auth-login {
+  background: transparent;
+  border: 1px solid #d9dfd5;
+  color: #1b4332;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-auth-login:hover {
+  background: #eef3eb;
+  border-color: #1b4332;
+}
+
+.btn-auth-register {
+  background: #1b4332;
+  border: 1px solid #1b4332;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.25);
+}
+
+.btn-auth-register:hover {
+  background: #2d6a4f;
+  transform: translateY(-1px);
+}
+
+.user-avatar-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #eef3eb;
+  border: 1px solid #c9d8c4;
+  border-radius: 30px;
+  padding: 4px 10px 4px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1b4332;
+}
+
+.user-avatar-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1b4332;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 2px solid #efeee9;
+  margin-bottom: 18px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #727973;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.auth-tab-btn.active {
+  color: #1b4332;
+  border-bottom-color: #1b4332;
+}
+
+.role-selector-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+.role-card {
+  border: 1.5px solid #deded2;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.role-card:hover {
+  border-color: #1b4332;
+}
+
+.role-card.selected {
+  border-color: #1b4332;
+  background: #eef3eb;
+}
+
+.role-card b {
+  font-size: 12px;
+  color: #1b4332;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.role-card small {
+  font-size: 10px;
+  color: #68746a;
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   AGROTOURISM DEDICATED PAGE
+   ========================================================================== */
+
+.agrotourism-hero-pro {
+  background: linear-gradient(rgba(11, 41, 27, 0.85), rgba(7, 27, 18, 0.95)),
+              url('amazon-cacao-hero.jpg') center/cover;
+  color: #ffffff;
+  padding: 85px clamp(24px, 8vw, 120px) 70px;
+  text-align: center;
+}
+
+.agrotourism-route-card {
+  background: #ffffff;
+  border: 1px solid rgba(11, 41, 27, 0.1);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(11, 41, 27, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s;
+}
+
+.agrotourism-route-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(11, 41, 27, 0.12);
+}
+
+
 

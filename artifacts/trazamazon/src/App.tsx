@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -6,12 +6,12 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from 'wouter';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, Check, CheckCircle2,
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Building2, Check, CheckCircle2,
   ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
-  Coffee, Compass, Download, Eye, FileText, Filter, Globe2, Handshake, Heart, Info,
-  Layers, LayoutGrid, Leaf, List, LocateFixed, MapPin, Menu, Minus, PackageCheck,
+  Coffee, Compass, Download, ExternalLink, Eye, FileCheck, FileText, Filter, Globe2, Handshake, Heart, Info,
+  Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck,
   Plus, QrCode, RefreshCw, Search, Send, ShieldCheck, Ship, SlidersHorizontal,
-  Smartphone, Sprout, TreePine, Truck, Upload, Wifi, WifiOff, X
+  Smartphone, Sprout, Star, TreePine, Truck, Upload, User, Users, Wifi, WifiOff, X
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -304,11 +304,433 @@ function loadLocalRecords(): LocalHarvestRecord[] {
 
 
 
+
+/**
+ * Sesión de Usuario (Autenticación B2B y Cooperativa)
+ */
+export interface UserSession {
+  name: string;
+  email: string;
+  role: 'buyer' | 'seller';
+  organization: string;
+  taxId?: string;
+  countryOrRegion?: string;
+}
+
+interface AuthContextType {
+  currentUser: UserSession | null;
+  login: (user: UserSession) => void;
+  logout: () => void;
+  isAuthModalOpen: boolean;
+  authModalTab: 'login' | 'register';
+  openAuthModal: (tab?: 'login' | 'register') => void;
+  closeAuthModal: () => void;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  currentUser: null,
+  login: () => {},
+  logout: () => {},
+  isAuthModalOpen: false,
+  authModalTab: 'login',
+  openAuthModal: () => {},
+  closeAuthModal: () => {},
+});
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    try {
+      const saved = localStorage.getItem('trazamazon-user-session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+
+  const login = (user: UserSession) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('trazamazon-user-session', JSON.stringify(user));
+    } catch {}
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('trazamazon-user-session');
+    } catch {}
+  };
+
+  const openAuthModal = (tab: 'login' | 'register' = 'login') => {
+    setAuthModalTab(tab);
+    setIsAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setIsAuthModalOpen(false);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        login,
+        logout,
+        isAuthModalOpen,
+        authModalTab,
+        openAuthModal,
+        closeAuthModal,
+      }}
+    >
+      {children}
+      {isAuthModalOpen && <AuthModal />}
+    </AuthContext.Provider>
+  );
+}
+
+/**
+ * Modal de Autenticación y Registro con Doble Rol
+ */
+function AuthModal() {
+  const { authModalTab, closeAuthModal, login } = useAuth();
+  const [tab, setTab] = useState<'login' | 'register'>(authModalTab);
+  const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [orgName, setOrgName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [regionOrCountry, setRegionOrCountry] = useState('');
+
+  const handleFastLogin = (demoRole: 'buyer' | 'seller') => {
+    if (demoRole === 'buyer') {
+      login({
+        name: 'Alexandre Bonnat',
+        email: 'procurement@valrhona-artisans.com',
+        role: 'buyer',
+        organization: 'Valrhona Artisans B2B',
+        taxId: 'FR-84920192',
+        countryOrRegion: 'Francia / Unión Europea',
+      });
+    } else {
+      login({
+        name: 'Santos Huamán',
+        email: 'presidencia@bosquevivo-madrededios.pe',
+        role: 'seller',
+        organization: 'Asociación Bosque Vivo',
+        taxId: 'RUC 20608912341',
+        countryOrRegion: 'Madre de Dios, Perú',
+      });
+    }
+    closeAuthModal();
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (tab === 'login') {
+      login({
+        name: email.split('@')[0] || 'Usuario B2B',
+        email,
+        role: email.includes('coop') || email.includes('bosque') ? 'seller' : 'buyer',
+        organization: email.includes('coop') ? 'Cooperativa Amazónica' : 'Empresa Compradora B2B',
+      });
+    } else {
+      login({
+        name: contactName || orgName || 'Representante',
+        email,
+        role,
+        organization: orgName || (role === 'buyer' ? 'Comprador B2B' : 'Cooperativa Amazónica'),
+        taxId,
+        countryOrRegion: regionOrCountry,
+      });
+    }
+    closeAuthModal();
+  };
+
+  return (
+    <div
+      className="modal-scrim"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) closeAuthModal();
+      }}
+    >
+      <div className="modal-card auth-modal-box" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+        <button
+          className="modal-close"
+          onClick={closeAuthModal}
+          aria-label="Cerrar modal de autenticación"
+          data-testid="button-close-auth-modal"
+        >
+          <X size={19} />
+        </button>
+
+        {/* Tab switcher */}
+        <div className="auth-tabs">
+          <button
+            type="button"
+            className={`auth-tab-btn ${tab === 'login' ? 'active' : ''}`}
+            onClick={() => setTab('login')}
+            data-testid="tab-login"
+          >
+            Iniciar Sesión
+          </button>
+          <button
+            type="button"
+            className={`auth-tab-btn ${tab === 'register' ? 'active' : ''}`}
+            onClick={() => setTab('register')}
+            data-testid="tab-register"
+          >
+            Crear Cuenta Verificada
+          </button>
+        </div>
+
+        {tab === 'login' ? (
+          <div>
+            <div className="text-center mb-5">
+              <span className="inline-flex p-2.5 rounded-full bg-[#eef3eb] text-[#1b4332] mb-2">
+                <Lock size={20} />
+              </span>
+              <h2 id="auth-modal-title" className="serif text-2xl text-[#071b12]">
+                Acceso a TrazAmazon B2B
+              </h2>
+              <p className="text-xs text-[#525f56] mt-1">
+                Ingresa con tu correo corporativo o cuenta de cooperativa registrada.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="quote-form">
+              <label>
+                Correo Electrónico
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ejemplo@empresa.com"
+                  data-testid="input-login-email"
+                />
+              </label>
+
+              <label>
+                Contraseña
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  data-testid="input-login-password"
+                />
+              </label>
+
+              <button type="submit" className="button button-dark button-wide mt-2" data-testid="button-submit-login">
+                Ingresar a la Plataforma <ArrowRight size={15} />
+              </button>
+            </form>
+
+            <div className="mt-5 pt-4 border-t border-[#e8e6df]">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#727973] block mb-2 text-center">
+                ⚡ Acceso Rápido de Prueba (Demo B2B)
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleFastLogin('buyer')}
+                  className="px-2.5 py-2 bg-[#f4f7f2] hover:bg-[#e4ede1] border border-[#c8dac3] rounded text-left transition-colors"
+                  data-testid="demo-login-buyer"
+                >
+                  <span className="text-[11px] font-bold text-[#1b4332] block flex items-center gap-1">
+                    🛒 Comprador B2B
+                  </span>
+                  <small className="text-[10px] text-[#525f56]">Valrhona Artisans S.A.</small>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFastLogin('seller')}
+                  className="px-2.5 py-2 bg-[#fdf8f3] hover:bg-[#faebd9] border border-[#e5cbb3] rounded text-left transition-colors"
+                  data-testid="demo-login-seller"
+                >
+                  <span className="text-[11px] font-bold text-[#954a17] block flex items-center gap-1">
+                    🌿 Cooperativa
+                  </span>
+                  <small className="text-[10px] text-[#525f56]">Asoc. Bosque Vivo</small>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="text-center mb-3">
+              <h2 id="auth-modal-title" className="serif text-2xl text-[#071b12]">
+                Registro en TrazAmazon
+              </h2>
+              <p className="text-xs text-[#525f56] mt-1">
+                Selecciona tu tipo de perfil para acceder a las herramientas correspondientes.
+              </p>
+            </div>
+
+            {/* Dual Role Selector */}
+            <div className="role-selector-container">
+              <div
+                className={`role-card ${role === 'buyer' ? 'selected' : ''}`}
+                onClick={() => setRole('buyer')}
+                role="button"
+                tabIndex={0}
+                data-testid="role-buyer-card"
+              >
+                <b>
+                  <Building2 size={14} /> Comprador B2B
+                </b>
+                <small>Chocolaterías, tostadurías, cosmética botánica y distribuidores.</small>
+              </div>
+
+              <div
+                className={`role-card ${role === 'seller' ? 'selected' : ''}`}
+                onClick={() => setRole('seller')}
+                role="button"
+                tabIndex={0}
+                data-testid="role-seller-card"
+              >
+                <b>
+                  <Leaf size={14} /> Cooperativa / Vendedor
+                </b>
+                <small>Asociaciones agrarias, comunidades nativas y concesiones forestales.</small>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="quote-form">
+              {role === 'buyer' ? (
+                <>
+                  <label>
+                    Nombre de la Empresa o Razón Social
+                    <input
+                      required
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      placeholder="Ej. Chocolats du Monde S.A.S."
+                      data-testid="input-register-org-buyer"
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label>
+                      Tax ID / VAT / RUC
+                      <input
+                        required
+                        value={taxId}
+                        onChange={(e) => setTaxId(e.target.value)}
+                        placeholder="FR-9481923"
+                        data-testid="input-register-taxid"
+                      />
+                    </label>
+                    <label>
+                      País / Mercado Destino
+                      <input
+                        required
+                        value={regionOrCountry}
+                        onChange={(e) => setRegionOrCountry(e.target.value)}
+                        placeholder="Francia / UE"
+                        data-testid="input-register-country"
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label>
+                    Nombre de la Cooperativa o Comunidad
+                    <input
+                      required
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      placeholder="Ej. Cooperativa Agroforestal Boca Pariamanu"
+                      data-testid="input-register-org-seller"
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label>
+                      RUC Agrario / Registro
+                      <input
+                        required
+                        value={taxId}
+                        onChange={(e) => setTaxId(e.target.value)}
+                        placeholder="20601948291"
+                        data-testid="input-register-ruc-seller"
+                      />
+                    </label>
+                    <label>
+                      Cuenca / Región Amazónica
+                      <input
+                        required
+                        value={regionOrCountry}
+                        onChange={(e) => setRegionOrCountry(e.target.value)}
+                        placeholder="Madre de Dios"
+                        data-testid="input-register-region-seller"
+                      />
+                    </label>
+                  </div>
+                </>
+              )}
+
+              <label>
+                Nombre del Contacto Principal
+                <input
+                  required
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Ej. María Elena Paredes"
+                  data-testid="input-register-name"
+                />
+              </label>
+
+              <label>
+                Correo Electrónico Corporativo
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="contacto@organizacion.com"
+                  data-testid="input-register-email"
+                />
+              </label>
+
+              <label>
+                Crear Contraseña
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  data-testid="input-register-password"
+                />
+              </label>
+
+              <button type="submit" className="button button-earth button-wide mt-2" data-testid="button-submit-register">
+                Crear Cuenta Verificada y Acceder <Check size={15} />
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Header de Navegación Estándar de la Plataforma
  */
 function Header({ active }: { active?: string }) {
   const [menu, setMenu] = useState(false);
+  const { currentUser, logout, openAuthModal } = useAuth();
 
   return (
     <header className="site-header">
@@ -321,33 +743,56 @@ function Header({ active }: { active?: string }) {
           <Link href="/marketplace" className={active === 'marketplace' ? 'nav-link active' : 'nav-link'} data-testid="link-marketplace">
             Marketplace B2B
           </Link>
-          <Link href="/lote/TA-0427" className={active === 'lot' ? 'nav-link active' : 'nav-link'} data-testid="link-qr-viewer">
-            Visor QR
-          </Link>
-          <Link
-            href="/lote/TA-0427"
-            className="nav-link"
-            data-testid="link-agrotourism"
-            onClick={() => {
-              window.setTimeout(() => {
-                const el = document.getElementById('ruta-agroturismo');
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 300);
-            }}
-          >
+          <Link href="/agroturismo" className={active === 'agroturismo' ? 'nav-link active' : 'nav-link'} data-testid="link-agrotourism">
             Ruta Agroturismo
           </Link>
           <Link href="/app" className={active === 'app' ? 'nav-link active' : 'nav-link'} data-testid="link-field-app">
-            App de campo
+            📱 App de Campo PWA
           </Link>
         </nav>
         <div className="header-actions">
-          <span className="header-note">
-            <span className="live-dot" /> Trazabilidad Satelital · EUDR Ready
-          </span>
-          <Link href="/marketplace" className="button button-dark button-small" data-testid="button-source">
-            Explorar Catálogo <ArrowUpRight size={15} />
-          </Link>
+          {currentUser ? (
+            <div className="header-user-badge">
+              <span className="user-avatar-dot">
+                {currentUser.name[0]?.toUpperCase()}
+              </span>
+              <div className="flex flex-col text-left leading-tight">
+                <span className="font-semibold text-xs text-[#071b12]">
+                  {currentUser.organization || currentUser.name}
+                </span>
+                <span className="text-[10px] text-[#2d6a4f] font-medium">
+                  {currentUser.role === 'buyer' ? '🛒 Comprador B2B' : '🌿 Cooperativa Amazónica'}
+                </span>
+              </div>
+              <button
+                onClick={logout}
+                className="ml-2 text-xs text-red-700 hover:text-red-900 font-semibold px-2 py-0.5 rounded bg-red-50 hover:bg-red-100 transition-colors"
+                title="Cerrar sesión"
+                data-testid="button-logout"
+              >
+                Salir
+              </button>
+            </div>
+          ) : (
+            <div className="header-auth-group">
+              <button
+                type="button"
+                className="btn-auth-login"
+                onClick={() => openAuthModal('login')}
+                data-testid="button-login"
+              >
+                Iniciar Sesión
+              </button>
+              <button
+                type="button"
+                className="btn-auth-register"
+                onClick={() => openAuthModal('register')}
+                data-testid="button-register"
+              >
+                Registrarse <ArrowUpRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
         <button
           className="menu-button"
@@ -393,8 +838,8 @@ function Footer() {
           <Link href="/marketplace" data-testid="footer-marketplace">
             Catálogo Mayorista B2B
           </Link>
-          <Link href="/lote/TA-0427" data-testid="footer-qr">
-            Visor Trazabilidad QR
+          <Link href="/agroturismo" data-testid="footer-agrotourism">
+            Ruta Agroturismo Vivencial
           </Link>
           <Link href="/app" data-testid="footer-field-app">
             App de Campo Offline
@@ -816,11 +1261,9 @@ function Marketplace() {
         <div className="max-w-[1320px] mx-auto px-6 flex flex-col gap-6">
           {/* Breadcrumb */}
           <nav aria-label="Ruta de navegación" className="flex items-center gap-2 text-xs uppercase tracking-wider text-[#727973] font-semibold">
-            <Link href="/" className="hover:text-[#001208] transition-colors">Inicio</Link>
+            <Link href="/" className="hover:text-[#1b4332] transition-colors" data-testid="breadcrumb-home">Inicio</Link>
             <span className="text-gray-300">/</span>
-            <span className="text-[#1b4332] font-bold">Marketplace B2B</span>
-            <span className="text-gray-300">/</span>
-            <span className="text-[#727973]">Catálogo de cosechas activas</span>
+            <Link href="/marketplace" className="text-[#1b4332] font-bold hover:underline" data-testid="breadcrumb-marketplace">Marketplace B2B</Link>
           </nav>
 
           {/* Editorial Title & Actions */}
@@ -1400,127 +1843,312 @@ function Marketplace() {
 }
 
 /**
- * VISTA 2: Visor de Detalle por Código QR y Ruta de Agroturismo
+ * VISTA 2: Perfil de Vendedor B2B, Lote de Cosecha y Cotización (Estilo Alibaba B2B)
  */
 function LotDetail() {
   const [, params] = useRoute('/lote/:id');
-  const [booking, setBooking] = useState(false);
-  const [booked, setBooked] = useState(false);
-  const [visitors, setVisitors] = useState(2);
-  const [visitDate, setVisitDate] = useState('2025-07-15');
   const [selectedLot, setSelectedLot] = useState<ProductLot | null>(null);
 
   const lot = initialLots.find((x) => x.id === params?.id) || initialLots[0];
 
-  const handleBookingSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    setBooked(true);
-  };
+  // Related products from the same cooperative or similar Amazonian harvests
+  const relatedLots = useMemo(() => {
+    return initialLots.filter((l) => l.id !== lot.id).slice(0, 3);
+  }, [lot.id]);
 
   return (
-    <main className="grain">
-      <Header active="lot" />
+    <main className="bg-[#faf9f4] min-h-screen text-[#1b1c19] font-dmsans">
+      <Header active="marketplace" />
 
-      <div className="lot-page page-in">
-        <Link href="/marketplace" className="back-link" data-testid="link-back-marketplace">
-          <ArrowLeft size={15} /> Volver al Catálogo Mayorista
-        </Link>
+      <div className="max-w-[1320px] mx-auto px-6 py-8">
+        {/* Breadcrumb B2B */}
+        <nav aria-label="Ruta de navegación" className="flex items-center gap-2 text-xs uppercase tracking-wider text-[#727973] font-semibold mb-6">
+          <Link href="/" className="hover:text-[#1b4332] transition-colors" data-testid="link-lot-home">Inicio</Link>
+          <span className="text-gray-300">/</span>
+          <Link href="/marketplace" className="hover:text-[#1b4332] transition-colors" data-testid="link-lot-marketplace">Marketplace B2B</Link>
+          <span className="text-gray-300">/</span>
+          <span className="text-[#1b4332] font-bold">{lot.cooperative}</span>
+          <span className="text-gray-300">/</span>
+          <span className="text-gray-500 font-medium truncate max-w-xs">{lot.name}</span>
+        </nav>
 
-        {/* Hero del Lote */}
-        <section className="lot-hero">
-          <div className="lot-photo">
-            <img src={lot.image} alt={lot.name} />
-            <span className="lot-photo-label">
-              <CircleDot size={13} /> EXPEDIENTE DIGITAL DE TRAZABILIDAD · {lot.id}
-            </span>
+        {/* ALIBABA STYLE VERIFIED SUPPLIER HEADER */}
+        <div className="alibaba-supplier-bar">
+          <div className="supplier-main-info">
+            <div className="supplier-avatar-badge">
+              {lot.cooperative[0]}
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-bold text-[#071b12]">{lot.cooperative}</h2>
+                <span className="gold-supplier-badge">
+                  <Award size={13} /> Gold Supplier Agroforestal
+                </span>
+                <span className="text-[11px] font-semibold text-[#143d29] bg-[#eef3eb] px-2 py-0.5 rounded border border-[#c9d8c4]">
+                  <ShieldCheck size={12} className="inline mr-0.5 text-[#2a7a4c]" /> Verificado In-Situ EUDR
+                </span>
+              </div>
+              <div className="supplier-metrics">
+                <span><Star size={12} className="text-[#d97736] fill-[#d97736]" /> <b>4.9 / 5.0</b> (38 pedidos B2B)</span>
+                <span><Clock size={12} /> Tasa de Respuesta: <b>&lt; 2 horas</b></span>
+                <span><Ship size={12} /> Capacidad Anual: <b>45 MT / año</b></span>
+                <span><MapPin size={12} /> {lot.community}, {lot.region}, Perú</span>
+              </div>
+            </div>
           </div>
 
-          <div className="lot-intro">
-            <div className="lot-status">
-              <span className="status-dot" /> LOTE ACTIVO VERIFICADO
-              <span className="lot-date">· Cosechado el {lot.harvestDate}</span>
-            </div>
-            <p className="eyebrow">
-              {lot.fruit.toUpperCase()} NATIVO <span>·</span> {lot.region.toUpperCase()}, PERÚ
-            </p>
-            <h1 className="serif">{lot.name}</h1>
-            <p className="lot-intro-coop">
-              <span className="coop-mark">{lot.cooperative[0]}</span>
-              {lot.cooperative} · {lot.community}
-            </p>
-            <p className="lot-price">
-              <strong>${lot.priceFob.toFixed(2)}</strong>
-              <span>{lot.unit}</span>
-              <i>·</i>
-              <span>{lot.minimumMoq}</span>
-            </p>
+          <div className="supplier-actions">
+            <button
+              className="btn-supplier-contact"
+              onClick={() => setSelectedLot(lot)}
+              data-testid="button-supplier-contact"
+            >
+              <Send size={14} /> Contactar Cooperativa (RFQ)
+            </button>
+            <button
+              className="btn-supplier-profile"
+              onClick={() => {
+                const el = document.getElementById('auditoria-satelital');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              data-testid="button-supplier-audit"
+            >
+              <ShieldCheck size={14} /> Auditoría Satelital
+            </button>
+          </div>
+        </div>
 
-            <div className="cert-list">
-              {lot.certifications.map((c) => (
-                <span key={c} className="tag">
-                  <ShieldCheck size={13} /> {c}
+        {/* PRODUCT HERO & TIERED PRICING SECTION */}
+        <section className="bg-white rounded-2xl border border-gray-200/70 p-6 sm:p-8 shadow-xs mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Gallery Column */}
+            <div className="lg:col-span-5 flex flex-col gap-4">
+              <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner">
+                <img
+                  src={lot.image}
+                  alt={lot.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                  <span className="px-2.5 py-1 bg-[#143d29]/90 text-white backdrop-blur-xs text-[10px] font-bold tracking-wider uppercase rounded-md shadow-xs">
+                    <ShieldCheck size={11} className="inline mr-1 text-[#4ade80]" /> Cero Deforestación 2024-2025
+                  </span>
+                  <span className="px-2.5 py-1 bg-[#071b12]/90 text-white backdrop-blur-xs text-[10px] font-bold tracking-wider uppercase rounded-md shadow-xs">
+                    LOTE #{lot.id} · Cosecha {lot.harvestDate}
+                  </span>
+                </div>
+                <div className="absolute bottom-3 right-3 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded backdrop-blur-xs">
+                  Foto auditada en parcela
+                </div>
+              </div>
+
+              {/* Sub-gallery thumbnails */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="aspect-4/3 rounded-lg overflow-hidden border-2 border-[#1b4332] relative">
+                  <img src={lot.image} alt="Cosecha principal" className="w-full h-full object-cover" />
+                  <span className="absolute bottom-0 inset-x-0 bg-[#1b4332]/90 text-white text-[8px] text-center py-0.5 font-bold uppercase">Grano</span>
+                </div>
+                <div className="aspect-4/3 rounded-lg overflow-hidden border border-gray-200 relative opacity-90 hover:opacity-100 transition-opacity">
+                  <img src={`${import.meta.env.BASE_URL}amazon-parcel-map.jpg`} alt="Mapa satelital" className="w-full h-full object-cover" />
+                  <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[8px] text-center py-0.5 font-bold uppercase">Satélite</span>
+                </div>
+                <div className="aspect-4/3 rounded-lg overflow-hidden border border-gray-200 relative opacity-90 hover:opacity-100 transition-opacity">
+                  <img src={lot.farmerImage} alt="Agricultor líder" className="w-full h-full object-cover" />
+                  <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[8px] text-center py-0.5 font-bold uppercase">Productor</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Details & Tiered Pricing */}
+            <div className="lg:col-span-7 flex flex-col gap-5">
+              <div>
+                <span className="text-[11px] font-bold tracking-wider uppercase text-[#954a17] bg-[#fbf2eb] px-2.5 py-0.5 rounded-full inline-block mb-1.5">
+                  {lot.fruit.toUpperCase()} NATIVO AMAZÓNICO · ALTA PUREZA GENÉTICA
                 </span>
-              ))}
-              <span className="tag tag-earth">
-                <Layers size={13} /> NDVI: {lot.ndviScore} (Dosel Denso)
-              </span>
-            </div>
+                <h1 className="font-newsreader text-3xl sm:text-4xl text-[#071b12] font-normal leading-tight">
+                  {lot.name}
+                </h1>
+                <p className="text-xs text-[#525f56] mt-1 flex items-center gap-1.5">
+                  <MapPin size={13} className="text-[#954a17]" />
+                  <span>{lot.community}, {lot.region}, Perú</span>
+                  <span className="text-gray-300">·</span>
+                  <span>{lot.cooperative}</span>
+                </p>
+              </div>
 
-            <p className="lot-story-intro">{lot.story}</p>
+              {/* TIERED PRICING BOX (ALIBABA STYLE) */}
+              <div className="tiered-pricing-box">
+                <div className="tiered-col">
+                  <div className="tiered-qty">500 – 2,000 kg</div>
+                  <div className="tiered-price">${lot.priceFob.toFixed(2)} USD</div>
+                  <div className="tiered-sub">/ kg FOB Callao</div>
+                </div>
+                <div className="tiered-col">
+                  <div className="tiered-qty">2,001 – 10,000 kg</div>
+                  <div className="tiered-price">${(lot.priceFob * 0.94).toFixed(2)} USD</div>
+                  <div className="tiered-sub">/ kg (-6% Volumen)</div>
+                </div>
+                <div className="tiered-col">
+                  <div className="tiered-qty">≥ 10,000 kg (FCL)</div>
+                  <div className="tiered-price">${(lot.priceFob * 0.86).toFixed(2)} USD</div>
+                  <div className="tiered-sub">/ kg (-14% Contenedor)</div>
+                </div>
+              </div>
 
-            <div className="flex flex-col gap-2 mt-4">
-              <button
-                className="button button-earth button-wide"
-                onClick={() => setSelectedLot(lot)}
-                data-testid="button-request-sample-lot"
-              >
-                Solicitar Muestra Técnica / Cotizar <ArrowUpRight size={15} />
-              </button>
-              <button
-                className="button button-light button-wide"
-                onClick={() => {
-                  const el = document.getElementById('ruta-agroturismo');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                data-testid="button-scroll-tour"
-              >
-                <Compass size={15} /> Conocer la Ruta de Agroturismo Vivencial
-              </button>
+              {/* Commercial Specs & Logistics Sheet */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-[#f8f7f2] rounded-xl border border-[#deded2] text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#727973] block">Pedido Mínimo (MOQ)</span>
+                  <b className="text-[#071b12]">{lot.minimumMoq}</b>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#727973] block">Stock Disponible</span>
+                  <b className="text-[#143d29]">{lot.availableKg.toLocaleString()} kg listos</b>
+                  <small className="text-[10px] text-[#727973] block">Lote: {lot.totalKg.toLocaleString()} kg</small>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#727973] block">Tiempo a Puerto</span>
+                  <b className="text-[#071b12]">10 – 15 días</b>
+                  <small className="text-[10px] text-[#727973] block">FOB Callao / Lima</small>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#727973] block">Incoterms</span>
+                  <b className="text-[#071b12]">FOB, CIF, CFR</b>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#727973] block">Empaque de Exportación</span>
+                  <b className="text-[#071b12]">Saco GrainPro 60kg</b>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#727973] block">Protección de Pago</span>
+                  <b className="text-[#2a7a4c]">Escrow / Carta Crédito</b>
+                </div>
+              </div>
+
+              {/* Certifications */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {lot.certifications.map((c) => (
+                  <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-[#c9d8c4] text-[#143d29] text-[11px] font-semibold rounded-md shadow-xs">
+                    <ShieldCheck size={12} className="text-[#2a7a4c]" /> {c}
+                  </span>
+                ))}
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#eef3eb] border border-[#c9d8c4] text-[#143d29] text-[11px] font-semibold rounded-md shadow-xs">
+                  <Layers size={12} className="text-[#1b4332]" /> Cobertura NDVI: {lot.ndviScore} (Dosel Primario)
+                </span>
+              </div>
+
+              {/* Primary Call to Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#954a17] hover:bg-[#b05b1f] text-white font-semibold text-xs rounded-xl shadow-md transition-all uppercase tracking-wider"
+                  onClick={() => setSelectedLot(lot)}
+                  data-testid="button-request-quote-main"
+                >
+                  <Send size={15} /> Solicitar Cotización Formal (RFQ)
+                </button>
+                <button
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white hover:bg-[#f4f3ed] text-[#071b12] border border-[#deded2] font-semibold text-xs rounded-xl shadow-xs transition-all uppercase tracking-wider"
+                  onClick={() => setSelectedLot(lot)}
+                  data-testid="button-request-sample-main"
+                >
+                  <PackageCheck size={15} /> Solicitar Muestra (500g)
+                </button>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Grid de Mapa Satelital y Ficha del Productor */}
-        <section className="lot-details-grid">
-          {/* Perfil del Agricultor */}
-          <div className="lot-story">
-            <p className="eyebrow">Origen Comunitario</p>
-            <h2 className="serif">
-              El rostro detrás de la cosecha: <em>bosque y familia.</em>
+        {/* TECHNICAL LABORATORY SHEET & SENSORY RADAR */}
+        <section className="bg-white rounded-2xl border border-gray-200/70 p-6 sm:p-8 shadow-xs mb-8">
+          <div className="border-b border-gray-100 pb-4 mb-6">
+            <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block">
+              Control de Calidad Físico-Químico · Acreditación Internacional
+            </span>
+            <h2 className="font-newsreader text-2xl text-[#071b12] mt-0.5">
+              Ficha Técnica de Laboratorio y Perfil Sensorial SCAA
             </h2>
-            <p>
-              En la cuenca de {lot.community}, cada familia productora custodia su parcela dentro de concesiones forestales y parcelas agroforestales.
-              La cosecha convive con árboles nativos centenarios y refugios de fauna silvestre.
-            </p>
+          </div>
 
-            <div className="farmer-card">
-              <img
-                className="farmer-avatar-image"
-                src={lot.farmerImage}
-                alt={`Fotografía de ${lot.farmerName}`}
-              />
-              <div>
-                <b>{lot.farmerName}</b>
-                <span>Productor(a) Líder · {lot.cooperative}</span>
-                <small>Insignia Digital TrazAmazon #{lot.id}-ID</small>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
+              <span className="text-[10px] uppercase font-bold text-[#727973] block">Humedad Final</span>
+              <b className="text-base text-[#071b12] font-mono">{lot.specs.k1}</b>
+              <small className="text-[10px] text-[#2a7a4c] font-semibold block">{lot.specs.v1}</small>
+            </div>
+            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
+              <span className="text-[10px] uppercase font-bold text-[#727973] block">Fermentación</span>
+              <b className="text-base text-[#071b12] font-mono">{lot.specs.k2}</b>
+              <small className="text-[10px] text-[#2a7a4c] font-semibold block">{lot.specs.v2}</small>
+            </div>
+            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
+              <span className="text-[10px] uppercase font-bold text-[#727973] block">Altitud Cultivo</span>
+              <b className="text-base text-[#071b12] font-mono">{lot.specs.k3}</b>
+              <small className="text-[10px] text-[#727973] block">{lot.specs.v3}</small>
+            </div>
+            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
+              <span className="text-[10px] uppercase font-bold text-[#727973] block">Cadmio / Metales</span>
+              <b className="text-base text-[#2a7a4c] font-mono">&lt; 0.28 ppm</b>
+              <small className="text-[10px] text-[#2a7a4c] font-semibold block">Aprobado UE Reg. 488</small>
+            </div>
+            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
+              <span className="text-[10px] uppercase font-bold text-[#727973] block">Puntaje Sensorial</span>
+              <b className="text-base text-[#954a17] font-mono">{lot.sensoryScore}</b>
+              <small className="text-[10px] text-[#954a17] font-semibold block">Cata de Especialidad</small>
+            </div>
+            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
+              <span className="text-[10px] uppercase font-bold text-[#727973] block">Empaque GrainPro</span>
+              <b className="text-base text-[#071b12] font-mono">Hermético</b>
+              <small className="text-[10px] text-[#2a7a4c] font-semibold block">Atmósfera controlada</small>
+            </div>
+          </div>
+
+          <div className="p-4 bg-[#f8f7f2] rounded-xl border border-[#deded2]">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#954a17] block mb-1">
+              Notas Sensoriales & Descriptores de Copa / Cata
+            </span>
+            <p className="text-sm text-[#071b12] font-medium leading-relaxed">
+              "{lot.sensoryNotes}"
+            </p>
+            <p className="text-xs text-[#525f56] mt-2 pt-2 border-t border-gray-200/60">
+              {lot.story}
+            </p>
+          </div>
+        </section>
+
+        {/* SATELLITE PARCEL RADAR & PRODUCER CARD */}
+        <section id="auditoria-satelital" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
+          {/* Producer Story */}
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200/70 p-6 sm:p-8 shadow-xs flex flex-col justify-between">
+            <div>
+              <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block mb-1">
+                Origen Comunitario & Gobernanza
+              </span>
+              <h2 className="font-newsreader text-2xl text-[#071b12] mb-3">
+                El rostro detrás de la cosecha: <span className="italic text-[#1b4332]">bosque y familia.</span>
+              </h2>
+              <p className="text-xs text-[#424843] leading-relaxed mb-6">
+                En la cuenca de <b>{lot.community}</b>, cada familia productora custodia su parcela dentro de concesiones forestales y parcelas agroforestales. La cosecha convive con árboles nativos centenarios y refugios de fauna silvestre.
+              </p>
+
+              <div className="flex items-center gap-4 p-4 bg-[#f4f7f2] border border-[#c9d8c4] rounded-xl">
+                <img
+                  className="w-14 h-14 rounded-full object-cover border-2 border-[#1b4332]"
+                  src={lot.farmerImage}
+                  alt={lot.farmerName}
+                />
+                <div className="flex-1">
+                  <b className="text-sm text-[#071b12] block">{lot.farmerName}</b>
+                  <span className="text-xs text-[#143d29] block">Productor(a) Líder · {lot.cooperative}</span>
+                  <small className="text-[10px] text-[#727973] block mt-0.5">Insignia Digital #{lot.id}-ID</small>
+                </div>
+                <BadgeCheck size={24} className="text-[#2a7a4c]" />
               </div>
-              <BadgeCheck size={20} className="text-[#2d6a4f]" />
             </div>
 
-            <div className="mt-5 p-3.5 bg-[#f0eee4] border border-[#e1dfd4] rounded flex items-center justify-between text-xs">
+            <div className="mt-6 p-3.5 bg-[#f0eee4] border border-[#e1dfd4] rounded-xl flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-[#2d6a4f]">
                 <QrCode size={18} />
-                <span className="font-mono text-[10px]">Hash: {lot.lotHash}</span>
+                <span className="font-mono text-[11px]">Hash: {lot.lotHash}</span>
               </div>
               <span className="text-[10px] text-[#2d6a4f] bg-[#e4ecde] px-2 py-0.5 rounded font-semibold">
                 PostGIS Verified
@@ -1528,19 +2156,23 @@ function LotDetail() {
             </div>
           </div>
 
-          {/* Componente Visual de Mapa Satelital Estilizado */}
-          <div className="provenance-card">
-            <div className="provenance-header">
+          {/* Animated Satellite Radar Component */}
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200/70 p-6 sm:p-8 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="eyebrow">Trazabilidad Satelital</p>
-                <h3 className="serif">Polígono de Parcela Georreferenciada</h3>
+                <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block">
+                  Trazabilidad Geoespacial Sentinel-2
+                </span>
+                <h3 className="font-newsreader text-2xl text-[#071b12]">
+                  Polígono de Parcela Georreferenciada
+                </h3>
               </div>
-              <span className="qr-mark">
-                <QrCode size={26} />
+              <span className="p-2.5 bg-[#eef3eb] text-[#1b4332] rounded-xl">
+                <QrCode size={22} />
               </span>
             </div>
 
-            {/* Radar Satelital Animado */}
+            {/* Radar Box */}
             <div className="satellite-radar-box">
               <img
                 className="satellite-radar-img"
@@ -1550,21 +2182,18 @@ function LotDetail() {
               <div className="satellite-grid-overlay" />
               <div className="radar-sweep" />
 
-              {/* Polígono de la Parcela */}
               <div className="parcel-polygon-outline" title="Polígono delimitado de la parcela">
                 <span className="text-[7px] text-[#f7e6ce] absolute -top-3.5 left-1 font-mono">PARCELA {lot.id}</span>
               </div>
 
-              {/* Punto de Cosecha con Pulso */}
               <div className="pulse-target" title="Coordenadas GPS de cosecha" />
 
-              {/* Badges de Información Satelital */}
               <div className="satellite-badge-group">
                 <span className="satellite-status-pill">
                   <ShieldCheck size={11} /> Cero Deforestación 2024-2025
                 </span>
                 <span className="ndvi-pill">
-                  <Leaf size={11} /> Cobertura Vegetal NDVI {lot.ndviScore}
+                  <Leaf size={11} /> Cobertura NDVI {lot.ndviScore}
                 </span>
               </div>
 
@@ -1574,131 +2203,450 @@ function LotDetail() {
               </div>
             </div>
 
-            <p className="map-illustration-note">
-              Monitoreo satelital Sentinel-2 (ESA) procesado vía Supabase PostGIS. Cero pérdida de cobertura forestal en un radio de 5 km.
+            <p className="text-[11px] text-[#727973] mt-3 leading-relaxed">
+              Monitoreo satelital Sentinel-2 (ESA) procesado vía Supabase PostGIS. Cero pérdida de cobertura forestal en un radio de 5 km desde la fecha de corte regulatoria EUDR (31 de diciembre 2020).
             </p>
 
-            <div className="provenance-steps">
-              <div>
-                <span className="step-check">
-                  <Check size={12} />
-                </span>
-                <p>
-                  <b>Registro en Parcela sin Señal</b>
-                  <small>{lot.harvestDate} · App de Campo Offline (Dexie.js)</small>
-                </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-100 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center text-[10px] font-bold">✓</span>
+                <span className="text-[11px] text-[#424843]">Captura Offline en Parcela</span>
               </div>
-              <div>
-                <span className="step-check">
-                  <Check size={12} />
-                </span>
-                <p>
-                  <b>Sincronización Cloud y Verificación Hash</b>
-                  <small>Supabase Cloud PostgreSQL + PostGIS · Acreditado EUDR</small>
-                </p>
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center text-[10px] font-bold">✓</span>
+                <span className="text-[11px] text-[#424843]">Hash Inmutable PostGIS</span>
               </div>
-              <div>
-                <span className="step-now">
-                  <Leaf size={12} />
-                </span>
-                <p>
-                  <b>Disponible en Catálogo Mayorista B2B</b>
-                  <small>Venta directa y trazabilidad abierta al importador</small>
-                </p>
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#eef3eb] text-[#2a7a4c] flex items-center justify-center text-[10px] font-bold">✓</span>
+                <span className="text-[11px] text-[#424843]">Acreditado Reg. UE 2023/1115</span>
               </div>
-            </div>
-            <div className="provenance-foot">
-              <ShieldCheck size={15} /> Acreditación oficial TrazAmazon · Reglamento Europeo Cero Deforestación
             </div>
           </div>
         </section>
 
-        {/* Sección de Agroturismo Vivencial */}
-        <section className="tour-block" id="ruta-agroturismo">
-          <div className="tour-gallery">
-            <figure className="tour-image">
-              <img src={`${import.meta.env.BASE_URL}tour-community.jpg`} alt="Recepción por la comunidad nativa" />
-              <figcaption>
-                <Handshake size={15} /> Bienvenida Comunitaria
-              </figcaption>
-            </figure>
-            <figure className="tour-image">
-              <img src={`${import.meta.env.BASE_URL}tour-agroforestry.jpg`} alt="Caminata guiada por parcelas de cacao" />
-              <figcaption>
-                <TreePine size={15} /> Recorrido Agroforestal
-              </figcaption>
-            </figure>
-            <figure className="tour-image">
-              <img src={`${import.meta.env.BASE_URL}tour-community-meal.jpg`} alt="Almuerzo tradicional con frutos del bosque" />
-              <figcaption>
-                <Compass size={15} /> Sabores de la Selva
-              </figcaption>
-            </figure>
+        {/* CROSS SELLING: MÁS PRODUCTOS DE ESTE PROVEEDOR */}
+        <section className="bg-white rounded-2xl border border-gray-200/70 p-6 sm:p-8 shadow-xs mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-gray-100 pb-4 mb-6 gap-2">
+            <div>
+              <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block">
+                Catálogo del Proveedor
+              </span>
+              <h2 className="font-newsreader text-2xl text-[#071b12]">
+                Más Cosechas y Productos de <span className="italic text-[#1b4332]">{lot.cooperative}</span>
+              </h2>
+            </div>
+            <Link href="/marketplace" className="text-xs text-[#954a17] hover:text-[#d97736] font-bold flex items-center gap-1">
+              Ver todo el catálogo mayorista <ArrowRight size={14} />
+            </Link>
           </div>
 
-          <div className="tour-copy">
-            <p className="eyebrow">Ruta TrazAmazon</p>
-            <h2 className="serif">
-              Vive la experiencia en nuestra <em>comunidad.</em>
-            </h2>
-            <p>
-              Conecta de forma real con el origen de lo que consumes. Visita la Asociación Bosque Vivo en Madre de Dios,
-              recorre parcelas de cacao bajo árboles gigantes y comparte la mesa tradicional con las familias productoras.
-            </p>
-            <ul className="tour-list">
-              <li>
-                <CheckCircle2 size={15} /> Ruta guiada por agricultores locales en lengua originaria y español
-              </li>
-              <li>
-                <CheckCircle2 size={15} /> Taller de fermentación y secado tradicional de cacao
-              </li>
-              <li>
-                <CheckCircle2 size={15} /> 100% de los ingresos van al fondo de conservación comunal
-              </li>
-            </ul>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {relatedLots.map((relLot) => (
+              <div key={relLot.id} className="bg-[#faf9f4] border border-gray-200/70 rounded-xl overflow-hidden shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div>
+                  <div className="relative aspect-16/10 overflow-hidden bg-gray-100">
+                    <img src={relLot.image} alt={relLot.name} className="w-full h-full object-cover" />
+                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-[9px] font-bold uppercase rounded">
+                      LOTE #{relLot.id}
+                    </span>
+                    <span className="absolute top-2 right-2 px-2 py-0.5 bg-[#143d29]/90 text-white text-[9px] font-bold uppercase rounded">
+                      {relLot.sensoryScore} SCAA
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#954a17] block">
+                      {relLot.fruit} · {relLot.region}
+                    </span>
+                    <h3 className="font-newsreader text-lg text-[#071b12] font-semibold mt-0.5 line-clamp-1">
+                      {relLot.name}
+                    </h3>
+                    <p className="text-xs text-[#525f56] mt-1 line-clamp-2">
+                      {relLot.sensoryNotes}
+                    </p>
+                    <div className="flex items-baseline gap-1 mt-3">
+                      <span className="text-base font-bold text-[#071b12]">${relLot.priceFob.toFixed(2)}</span>
+                      <span className="text-xs text-[#727973]">{relLot.unit}</span>
+                      <span className="text-[10px] text-[#2a7a4c] font-semibold ml-auto">{relLot.minimumMoq}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 pt-0">
+                  <Link
+                    href={`/lote/${relLot.id}`}
+                    className="w-full py-2 bg-white hover:bg-[#eef3eb] text-[#1b4332] border border-[#c9d8c4] rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Eye size={13} /> Ver Expediente del Lote
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
+        {/* INVITATION TO DEDICATED AGROTOURISM */}
+        <section className="bg-gradient-to-r from-[#071b12] to-[#143d29] rounded-2xl p-8 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="max-w-2xl">
+            <span className="text-[11px] font-bold tracking-widest uppercase text-[#d4a373] block mb-1">
+              Rutas de Agroturismo Vivencial & Bioeconomía
+            </span>
+            <h2 className="font-newsreader text-2xl sm:text-3xl text-white font-normal">
+              ¿Deseas auditar la cosecha en persona o vivir la experiencia comunitaria?
+            </h2>
+            <p className="text-xs text-gray-300 mt-2 leading-relaxed">
+              Visita la cuenca de <b>{lot.cooperative}</b> en Madre de Dios. Recorre parcelas de cacao nativo bajo dosel primario, participa en talleres de cata y apoya directamente el fondo de conservación comunal.
+            </p>
+          </div>
+          <Link
+            href="/agroturismo"
+            className="whitespace-nowrap px-6 py-3.5 bg-[#954a17] hover:bg-[#b05b1f] text-white text-xs font-semibold uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2"
+            data-testid="link-agrotourism-cta"
+          >
+            <Compass size={16} /> Explorar Rutas de Agroturismo <ArrowRight size={14} />
+          </Link>
+        </section>
+      </div>
+
+      <Footer />
+
+      <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
+    </main>
+  );
+}
+
+/**
+ * VISTA DEDICADA: Portal de Agroturismo Vivencial y Bioeconomía Amazónica (/agroturismo)
+ */
+function AgroturismoPage() {
+  const [selectedRoute, setSelectedRoute] = useState<string>('cacao-boca-pariamanu');
+  const [bookingModal, setBookingModal] = useState(false);
+  const [booked, setBooked] = useState(false);
+  const [visitors, setVisitors] = useState(2);
+  const [visitDate, setVisitDate] = useState('2025-07-20');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [company, setCompany] = useState('');
+
+  const routes = [
+    {
+      id: 'cacao-boca-pariamanu',
+      title: 'Ruta del Cacao Nativo & Bosque Ancestral',
+      community: 'Comunidad Nativa Boca Pariamanu (Pueblo Amahuaca)',
+      region: 'Río Pariamanu · Madre de Dios',
+      coop: 'Asociación Bosque Vivo',
+      duration: '3 Días / 2 Noches',
+      price: '$280 USD',
+      image: 'amazon-cacao-hero.jpg',
+      tags: ['Cacao Nativo', 'Navegación Fluvial', 'Cata en Origen'],
+      desc: 'Navega por el río Pariamanu en canoas tradicionales, recolecta mazorcas de cacao criollo bajo árboles centenarios de castaña y aprende el proceso de fermentación tradicional en cajones de madera laurel.',
+      highlights: [
+        'Hospedaje en tambo comunitario ecológico con alimentación autóctona',
+        'Taller de corte y cata guiada de mazorcas de cacao nativo chuncho y criollo',
+        'Monitoreo biológico nocturno: avistamiento de caimanes y aves amazónicas',
+        '100% de la tarifa va directamente a las familias de la comunidad'
+      ]
+    },
+    {
+      id: 'castana-tahuamanu',
+      title: 'Ruta de la Castaña Gigante & Concesiones Sostenibles',
+      community: 'Concesión Castañera Río Las Piedras',
+      region: 'Tahuamanu · Madre de Dios',
+      coop: 'Asoc. Castañeros del Tahuamanu',
+      duration: '4 Días / 3 Noches',
+      price: '$360 USD',
+      image: 'tour-agroforestry.jpg',
+      tags: ['Castaña Silvestre', 'Concesión Forestal', 'Canopy'],
+      desc: 'Convive con las familias recolectoras de castaña amazónica. Aprende a usar el "payón" tradicional, recolecta cocos de castaña en bosque virgen y degusta leche fresca de castaña en el campamento.',
+      highlights: [
+        'Ascenso guiado con arnés a copas de castaños gigantes de más de 45 metros',
+        'Recolección tradicional de cocos de castaña y quebrado artesanal',
+        'Cata de aceite virgen prensado en frío y cosmética bioamazónica',
+        'Fondo de vigilancia comunitaria para defensa contra taladores ilegales'
+      ]
+    },
+    {
+      id: 'cafe-sandia',
+      title: 'Ruta del Café de Nube & Terrazas Andino-Amazónicas',
+      community: 'Valle de Tambopata (Sandia)',
+      region: 'Puno / Selva Alta',
+      coop: 'Cooperativa Agraria Cafetalera San Juan del Oro',
+      duration: '3 Días / 2 Noches',
+      price: '$240 USD',
+      image: 'tour-community.jpg',
+      tags: ['Café Geisha', 'Selva Alta', 'Biodiversidad'],
+      desc: 'Ascenso a los bosques de neblina de Sandia a 1,750 msnm donde crece el café orgánico más premiado del mundo. Conoce parcelas agroforestales bajo dosel y degusta microlotes Geisha.',
+      highlights: [
+        'Cata profesional de café Geisha con catadores Q-Grader comunales',
+        'Ruta de observación del Gallito de las Rocas y orquídeas endémicas',
+        'Senderismo por terrazas preincaicas adaptadas a café de alta montaña',
+        'Intercambio cultural con las familias de habla quechua-aymara'
+      ]
+    }
+  ];
+
+  const currentRoute = routes.find((r) => r.id === selectedRoute) || routes[0];
+
+  const handleBooking = (e: FormEvent) => {
+    e.preventDefault();
+    setBooked(true);
+  };
+
+  return (
+    <main className="bg-[#faf9f4] min-h-screen text-[#1b1c19] font-dmsans">
+      <Header active="agroturismo" />
+
+      {/* AGROTOURISM HERO */}
+      <section className="agrotourism-hero-pro relative overflow-hidden">
+        <div className="max-w-[1000px] mx-auto flex flex-col items-center gap-4 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#143d29]/80 border border-[#4ade80]/30 rounded-full text-white text-xs font-semibold backdrop-blur-xs">
+            <Compass size={14} className="text-[#d4a373]" />
+            <span>Bioeconomía & Turismo Comunitario Regenerativo</span>
+          </div>
+          <h1 className="font-newsreader text-4xl sm:text-6xl text-white font-normal tracking-tight">
+            Rutas de Agroturismo Vivencial <br />
+            <span className="italic text-[#d4a373]">en el corazón del Bosque Amazónico</span>
+          </h1>
+          <p className="text-base text-gray-200 max-w-2xl leading-relaxed">
+            Conecta de forma real con el origen de los superfrutos amazónicos. Visita las comunidades productoras, recorre parcelas agroforestales bajo dosel y financia directamente la conservación territorial del bosque primario.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
             <button
-              className="button button-earth"
               onClick={() => {
-                setBooking(true);
-                setBooked(false);
+                const el = document.getElementById('rutas-disponibles');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              data-testid="button-book-agrotourism"
+              className="px-6 py-3.5 bg-[#954a17] hover:bg-[#b05b1f] text-white text-xs font-semibold uppercase tracking-wider rounded-xl shadow-lg transition-all flex items-center gap-2"
             >
-              Reservar Agroturismo Vivencial <ArrowRight size={15} />
+              Explorar Rutas Disponibles <ArrowDown size={15} />
             </button>
-            <span className="tour-note">Cupos reducidos para preservar el equilibrio ecológico.</span>
+            <button
+              onClick={() => setBookingModal(true)}
+              className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/30 text-xs font-semibold uppercase tracking-wider rounded-xl backdrop-blur-xs transition-all flex items-center gap-2"
+            >
+              Cotizar Experiencia Corporativa <Send size={15} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* TELEMETRY STRIP */}
+      <div className="w-full bg-[#071b12] text-white border-y border-[#143d29] py-4 px-6">
+        <div className="max-w-[1320px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div>
+            <b className="font-newsreader text-2xl text-[#d4a373] block">3 Cuencas</b>
+            <span className="text-[11px] text-gray-300">Territorios Indígenas Protegidos</span>
+          </div>
+          <div>
+            <b className="font-newsreader text-2xl text-[#4ade80] block">100%</b>
+            <span className="text-[11px] text-gray-300">Retorno Directo a la Comunidad</span>
+          </div>
+          <div>
+            <b className="font-newsreader text-2xl text-[#d4a373] block">0% Huella</b>
+            <span className="text-[11px] text-gray-300">Turismo Carbono Negativo</span>
+          </div>
+          <div>
+            <b className="font-newsreader text-2xl text-[#4ade80] block">Máx. 10</b>
+            <span className="text-[11px] text-gray-300">Visitantes por Expedición</span>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT: ROUTES GRID */}
+      <div id="rutas-disponibles" className="max-w-[1320px] mx-auto px-6 py-12">
+        <div className="text-center max-w-xl mx-auto mb-10">
+          <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block">
+            Experiencias Comunitarias Certificadas
+          </span>
+          <h2 className="font-newsreader text-3xl sm:text-4xl text-[#071b12] mt-1">
+            Elige tu ruta agroforestal
+          </h2>
+          <p className="text-xs text-[#525f56] mt-2 leading-relaxed">
+            Cada expedición está diseñada y liderada por los propios agricultores y comités de gobernanza de las comunidades amazónicas.
+          </p>
+        </div>
+
+        {/* 3 Routes Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          {routes.map((r) => (
+            <div
+              key={r.id}
+              className={`agrotourism-route-card ${selectedRoute === r.id ? 'ring-2 ring-[#1b4332]' : ''}`}
+            >
+              <div className="relative aspect-16/10 overflow-hidden bg-gray-100">
+                <img
+                  src={`${import.meta.env.BASE_URL}${r.image}`}
+                  alt={r.title}
+                  className="w-full h-full object-cover"
+                />
+                <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#071b12]/90 text-white text-[10px] font-bold uppercase rounded-md backdrop-blur-xs">
+                  {r.duration}
+                </span>
+                <span className="absolute top-3 right-3 px-2.5 py-1 bg-[#954a17] text-white text-[11px] font-bold rounded-md shadow-xs">
+                  {r.price} / pax
+                </span>
+              </div>
+
+              <div className="p-6 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {r.tags.map((t) => (
+                      <span key={t} className="text-[10px] font-semibold text-[#143d29] bg-[#eef3eb] px-2 py-0.5 rounded">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+
+                  <h3 className="font-newsreader text-xl text-[#071b12] font-semibold mb-1">
+                    {r.title}
+                  </h3>
+                  <p className="text-xs text-[#954a17] font-medium mb-3 flex items-center gap-1">
+                    <MapPin size={12} /> {r.community}
+                  </p>
+                  <p className="text-xs text-[#525f56] leading-relaxed mb-4">
+                    {r.desc}
+                  </p>
+
+                  <div className="space-y-1.5 mb-6 pt-3 border-t border-gray-100">
+                    {r.highlights.map((h, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs text-[#424843]">
+                        <CheckCircle2 size={13} className="text-[#2a7a4c] shrink-0 mt-0.5" />
+                        <span>{h}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedRoute(r.id);
+                      setBookingModal(true);
+                      setBooked(false);
+                    }}
+                    className="flex-1 py-3 bg-[#1b4332] hover:bg-[#143d29] text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-xs"
+                    data-testid={`button-book-${r.id}`}
+                  >
+                    <Compass size={14} /> Reservar Cupo
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 3-DAY ITINERARY DETAILS */}
+        <section className="bg-white rounded-2xl border border-gray-200/70 p-6 sm:p-10 shadow-xs mb-12">
+          <div className="max-w-2xl mb-8">
+            <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block">
+              Itinerario Vivencial Tipo · 3 Días / 2 Noches
+            </span>
+            <h2 className="font-newsreader text-3xl text-[#071b12] mt-1">
+              ¿Cómo es un día en la comunidad con TrazAmazon?
+            </h2>
+            <p className="text-xs text-[#525f56] mt-2">
+              Experiencias inmersivas pensadas para compradores B2B, casas de chocolate, tostadores y viajeros éticos.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-5 bg-[#faf9f4] rounded-xl border border-gray-200/60 flex flex-col gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#1b4332] text-white flex items-center justify-center font-bold text-sm">
+                01
+              </div>
+              <b className="text-sm text-[#071b12]">Día 1: Navegación & Bienvenida Comunal</b>
+              <p className="text-xs text-[#525f56] leading-relaxed">
+                Salida en bote fluvial por la cuenca protegida. Arribo a la comunidad, presentación con el presidente comunal y comida tradicional en tambo bajo árboles centenarios.
+              </p>
+            </div>
+
+            <div className="p-5 bg-[#faf9f4] rounded-xl border border-gray-200/60 flex flex-col gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#954a17] text-white flex items-center justify-center font-bold text-sm">
+                02
+              </div>
+              <b className="text-sm text-[#071b12]">Día 2: Cosecha en Parcela & Cata en Origen</b>
+              <p className="text-xs text-[#525f56] leading-relaxed">
+                Trabajo en parcela agroforestal con la familia productora. Corte de mazorcas, desgranado manual, demostración de fermentación en cajones de laurel y cata sensorial bajo dosel.
+              </p>
+            </div>
+
+            <div className="p-5 bg-[#faf9f4] rounded-xl border border-gray-200/60 flex flex-col gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#2a7a4c] text-white flex items-center justify-center font-bold text-sm">
+                03
+              </div>
+              <b className="text-sm text-[#071b12]">Día 3: Reforestación & Retorno Fluvial</b>
+              <p className="text-xs text-[#525f56] leading-relaxed">
+                Siembra de un árbol nativo apadrinado en el lindero de conservación. Ceremonia de despedida comunal y retorno fluvial a la ciudad con tu lote o muestra certificada.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* TRANSPARENCY IMPACT FUND INFOGRAPHIC */}
+        <section className="bg-[#f4f7f2] border border-[#c9d8c4] rounded-2xl p-6 sm:p-8 flex flex-col lg:flex-row items-center justify-between gap-6">
+          <div className="max-w-xl">
+            <span className="text-[11px] font-bold tracking-wider uppercase text-[#143d29] block mb-1">
+              Gobernanza Financiera & Impacto Social
+            </span>
+            <h3 className="font-newsreader text-2xl text-[#071b12]">
+              ¿A dónde va el 100% de los fondos de agroturismo?
+            </h3>
+            <p className="text-xs text-[#525f56] mt-2 leading-relaxed">
+              TrazAmazon opera con un modelo transparente auditado. El agroturismo no es un negocio externo, sino una herramienta comunitaria de bioeconomía para proteger la Amazonía.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 w-full lg:w-auto">
+            <div className="p-4 bg-white rounded-xl border border-gray-200 text-center">
+              <b className="text-2xl text-[#1b4332] font-mono block">70%</b>
+              <span className="text-[10px] uppercase font-bold text-[#424843] block mt-1">Directo a Familias</span>
+              <small className="text-[9px] text-[#727973]">Hospedaje, guiado, alimentación</small>
+            </div>
+            <div className="p-4 bg-white rounded-xl border border-gray-200 text-center">
+              <b className="text-2xl text-[#954a17] font-mono block">20%</b>
+              <span className="text-[10px] uppercase font-bold text-[#424843] block mt-1">Fondo Territorial</span>
+              <small className="text-[9px] text-[#727973]">Patrullaje satelital y drones</small>
+            </div>
+            <div className="p-4 bg-white rounded-xl border border-gray-200 text-center">
+              <b className="text-2xl text-[#2a7a4c] font-mono block">10%</b>
+              <span className="text-[10px] uppercase font-bold text-[#424843] block mt-1">Logística & Seguros</span>
+              <small className="text-[9px] text-[#727973]">Combustible fluvial y botiquín</small>
+            </div>
           </div>
         </section>
       </div>
 
       <Footer />
 
-      {/* Modal Interactivo de Reserva de Agroturismo */}
-      {booking && (
-        <div className="modal-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) setBooking(false); }}>
-          <div className="modal-card booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-title">
+      {/* BOOKING MODAL */}
+      {bookingModal && (
+        <div className="modal-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) setBookingModal(false); }}>
+          <div className="modal-card booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-agrotour-title">
             <button
               className="modal-close"
-              onClick={() => setBooking(false)}
-              aria-label="Cerrar reserva"
-              data-testid="button-close-booking"
+              onClick={() => setBookingModal(false)}
+              aria-label="Cerrar modal"
+              data-testid="button-close-booking-modal"
             >
               <X size={19} />
             </button>
+
             {booked ? (
               <div className="success-state">
                 <span className="success-icon">
                   <Check size={25} />
                 </span>
-                <p className="eyebrow">Solicitud de Reserva Registrada</p>
-                <h2 className="serif">¡Te esperamos en el Bosque!</h2>
-                <p>
-                  Hemos reservado tu itinerario para <b>{visitors} {visitors === 1 ? 'visitante' : 'visitantes'}</b> con fecha tentativa <b>{visitDate}</b> en <b>{lot.cooperative}</b>.
-                  El coordinador comunitario se comunicará para brindarte las recomendaciones de viaje fluvial y vestimenta.
+                <p className="eyebrow">¡Solicitud de Reserva Confirmada!</p>
+                <h2 className="serif text-2xl text-[#071b12]">Nos vemos en la Selva</h2>
+                <p className="text-xs text-[#525f56] mt-2 leading-relaxed">
+                  Hemos registrado tu solicitud para <b>{visitors} {visitors === 1 ? 'visitante' : 'visitantes'}</b> en la <b>{currentRoute.title}</b> ({currentRoute.community}) con fecha tentativa <b>{visitDate}</b>.
+                  El coordinador comunitario de TrazAmazon se comunicará al correo <b>{email || 'registrado'}</b> en menos de 24 horas con las especificaciones de vestimenta y transporte fluvial.
                 </p>
-                <button className="button button-dark" onClick={() => setBooking(false)} data-testid="button-done-booking">
-                  Entendido <ArrowRight size={15} />
+                <button
+                  className="button button-dark mt-4"
+                  onClick={() => setBookingModal(false)}
+                  data-testid="button-done-booking"
+                >
+                  Entendido y Finalizar <ArrowRight size={15} />
                 </button>
               </div>
             ) : (
@@ -1707,19 +2655,47 @@ function LotDetail() {
                   <Compass size={24} />
                 </span>
                 <p className="eyebrow">Agroturismo Comunitario TrazAmazon</p>
-                <h2 id="booking-title" className="serif">Reservar Experiencia</h2>
-                <p className="modal-intro">
-                  Coordina tu visita a la cuenca de {lot.cooperative} ({lot.region}).
+                <h2 id="booking-agrotour-title" className="serif text-2xl text-[#071b12]">
+                  Reservar Expedición
+                </h2>
+                <p className="text-xs text-[#525f56] mt-1 mb-4">
+                  Coordina tu visita a: <b>{currentRoute.title}</b> ({currentRoute.region}).
                 </p>
-                <form className="quote-form" onSubmit={handleBookingSubmit}>
+
+                <form className="quote-form" onSubmit={handleBooking}>
                   <label>
                     Tu Nombre Completo
-                    <input required placeholder="Ej. Carlos Mendoza" data-testid="input-booking-name" />
+                    <input
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Ej. Carlos Mendoza"
+                      data-testid="input-agrotour-name"
+                    />
                   </label>
+
                   <label>
                     Correo Electrónico de Contacto
-                    <input type="email" required placeholder="carlos@correo.com" data-testid="input-booking-email" />
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="carlos@empresa.com"
+                      data-testid="input-agrotour-email"
+                    />
                   </label>
+
+                  <label>
+                    Empresa / Organización (Opcional)
+                    <input
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      placeholder="Ej. Chocolats Gourmet / Particular"
+                      data-testid="input-agrotour-company"
+                    />
+                  </label>
+
                   <label>
                     Fecha Tentativa de Visita
                     <input
@@ -1727,20 +2703,20 @@ function LotDetail() {
                       required
                       value={visitDate}
                       onChange={(e) => setVisitDate(e.target.value)}
-                      data-testid="input-booking-date"
+                      data-testid="input-agrotour-date"
                     />
                   </label>
+
                   <div className="guest-control">
                     <div>
                       <b>Número de Visitantes</b>
-                      <span>Máximo 10 personas por grupo</span>
+                      <span>Máximo 10 personas por expedición</span>
                     </div>
                     <div className="stepper">
                       <button
                         type="button"
                         onClick={() => setVisitors(Math.max(1, visitors - 1))}
                         aria-label="Quitar persona"
-                        data-testid="button-remove-guest"
                       >
                         <Minus size={14} />
                       </button>
@@ -1749,13 +2725,13 @@ function LotDetail() {
                         type="button"
                         onClick={() => setVisitors(Math.min(10, visitors + 1))}
                         aria-label="Agregar persona"
-                        data-testid="button-add-guest"
                       >
                         <Plus size={14} />
                       </button>
                     </div>
                   </div>
-                  <button className="button button-dark button-wide" type="submit" data-testid="button-submit-booking">
+
+                  <button className="button button-dark button-wide mt-2" type="submit" data-testid="button-submit-agrotour-booking">
                     Confirmar Solicitud de Reserva <Send size={15} />
                   </button>
                 </form>
@@ -1764,8 +2740,6 @@ function LotDetail() {
           </div>
         </div>
       )}
-
-      <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
     </main>
   );
 }
@@ -2291,18 +3265,21 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <RoutedErrorBoundary>
-            <Switch>
-              <Route path="/" component={Home} />
-              <Route path="/marketplace" component={Marketplace} />
-              <Route path="/lote/:id" component={LotDetail} />
-              <Route path="/app" component={FieldApp} />
-              <Route component={NotFound} />
-            </Switch>
-          </RoutedErrorBoundary>
-        </WouterRouter>
-        <Toaster />
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <RoutedErrorBoundary>
+              <Switch>
+                <Route path="/" component={Home} />
+                <Route path="/marketplace" component={Marketplace} />
+                <Route path="/lote/:id" component={LotDetail} />
+                <Route path="/agroturismo" component={AgroturismoPage} />
+                <Route path="/app" component={FieldApp} />
+                <Route component={NotFound} />
+              </Switch>
+            </RoutedErrorBoundary>
+          </WouterRouter>
+          <Toaster />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
