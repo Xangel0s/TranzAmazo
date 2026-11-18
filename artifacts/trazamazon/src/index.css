@@ -1552,3 +1552,105 @@ button,a { -webkit-tap-highlight-color: transparent; }
   max-height: 420px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* LinkedIn-style B2B RFQ Inbox */
+.b2b-inbox-layout {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid rgba(27, 67, 50, 0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  min-height: 620px;
+}
+
+@media (max-width: 768px) {
+  .b2b-inbox-layout {
+    flex-direction: column;
+  }
+}
+
+.b2b-inbox-sidebar {
+  width: 340px;
+  border-right: 1px solid rgba(27, 67, 50, 0.12);
+  background: #fbfbf9;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .b2b-inbox-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(27, 67, 50, 0.12);
+    max-height: 320px;
+  }
+}
+
+.b2b-inbox-item {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  text-align: left;
+}
+
+.b2b-inbox-item:hover {
+  background: #f4f6f4;
+}
+
+.b2b-inbox-item.active {
+  background: #ffffff;
+  border-left: 4px solid #1b4332;
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+.b2b-chat-bubble-buyer {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem 1rem 1rem 0.25rem;
+  padding: 0.85rem 1rem;
+  max-width: 82%;
+  color: #1f2937;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.b2b-chat-bubble-seller {
+  background: #e8f1ec;
+  border: 1px solid #c2dbcd;
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  padding: 0.85rem 1rem;
+  max-width: 82%;
+  color: #1b4332;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  box-shadow: 0 1px 2px rgba(27, 67, 50, 0.05);
+}
+
+/* Modals */
+.b2b-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.b2b-modal-panel {
+  background: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid rgba(27, 67, 50, 0.15);
+}

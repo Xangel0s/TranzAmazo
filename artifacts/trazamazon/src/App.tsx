@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from 'wouter';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Boxes, Building2, Camera, Check, CheckCircle2, Copy, Database, DollarSign, Droplets, FileCode, FlaskConical, Image, LogOut, Mountain, Navigation, Thermometer,
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Boxes, Building2, Camera, Check, CheckCircle2, Copy, Database, DollarSign, Droplets, Edit3, FileCode, FlaskConical, Image, LogOut, Mountain, Navigation, Thermometer,
   ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
   Coffee, Compass, Download, ExternalLink, Eye, FileCheck, FileText, Filter, Globe2, Handshake, Heart, Info,
   Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck,
@@ -17,8 +17,6 @@ import {
   fetchCooperativeProfile,
   saveCooperativeProfile,
   defaultCooperativeProfile,
-  getSupabaseSchemaSql,
-  SUPABASE_URL,
   type CooperativeProfile
 } from './lib/supabase';
 
@@ -2535,7 +2533,7 @@ function LotDetail() {
             })()}
 
             <p className="text-[11px] text-[#727973] mt-3 leading-relaxed">
-              Monitoreo satelital Sentinel-2 (ESA) procesado vía Supabase PostGIS. Cero pérdida de cobertura forestal en un radio de 5 km desde la fecha de corte regulatoria EUDR (31 de diciembre 2020).
+              Monitoreo satelital Sentinel-2 (ESA) procesado vía PostGIS geoespacial. Cero pérdida de cobertura forestal en un radio de 5 km desde la fecha de corte regulatoria EUDR (31 de diciembre 2020).
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-100 text-xs">
@@ -3340,7 +3338,7 @@ function MobileAppLandingPage() {
             </div>
             <h3 className="text-xl font-serif font-bold text-[#1b4332]">4. Sincronización Automática Cloud PostGIS</h3>
             <p className="text-gray-600 mt-2 font-sans text-sm leading-relaxed">
-              Tan pronto el técnico o dirigente llega a una base con antena comunitaria o punto de acceso Starlink, el motor de sincronización resuelve conflictos y sube la cosecha a la base geoespacial Supabase PostGIS para su exhibición inmediata en el marketplace.
+              Tan pronto el técnico o dirigente llega a una base con antena comunitaria o punto de acceso Starlink, el motor de sincronización resuelve conflictos y sube la cosecha a la base geoespacial PostGIS para su exhibición inmediata en el marketplace.
             </p>
           </div>
         </div>
@@ -3444,6 +3442,7 @@ function MobileAppLandingPage() {
         </div>
       </section>
 
+
       <Footer />
     </main>
   );
@@ -3457,8 +3456,8 @@ function B2BDashboardPage() {
   const { orders, updateOrderStatus } = useB2BOrders();
   const [activeRole, setActiveRole] = useState<'buyer' | 'seller'>(currentUser?.role || 'seller');
 
-  // Pestañas activas por rol
-  const [sellerTab, setSellerTab] = useState<'overview' | 'orders' | 'lots' | 'customize' | 'location' | 'satellite' | 'supabase'>('overview');
+  // Pestañas activas por rol (sin tab técnica de Supabase en UI)
+  const [sellerTab, setSellerTab] = useState<'overview' | 'orders' | 'lots' | 'customize' | 'location' | 'satellite'>('overview');
   const [buyerTab, setBuyerTab] = useState<'overview' | 'orders' | 'passports' | 'profile'>('overview');
 
   // Perfil de la cooperativa y catálogo de lotes con fotos editables
@@ -3466,7 +3465,83 @@ function B2BDashboardPage() {
   const [lots, setLots] = useState<ProductLot[]>(initialLots);
 
   const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const [sqlCopied, setSqlCopied] = useState(false);
+
+  // Estado para la Bandeja RFQ interactiva estilo LinkedIn
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('TA-ORD-881');
+  const [rfqFilter, setRfqFilter] = useState<'all' | 'submitted' | 'quoted' | 'sample_dispatched' | 'contract_locked'>('all');
+  const [chatMessageInput, setChatMessageInput] = useState<string>('');
+
+  // Conversaciones por orden estilo LinkedIn
+  const [orderConversations, setOrderConversations] = useState<Record<string, Array<{
+    id: string;
+    sender: 'buyer' | 'seller' | 'system';
+    senderName: string;
+    text: string;
+    timestamp: string;
+    trackingInfo?: string;
+  }>>>({
+    'TA-ORD-881': [
+      {
+        id: 'msg-1',
+        sender: 'buyer',
+        senderName: 'Alexandre Bonnat · Valrhona Artisans',
+        text: 'Estimados productores de Bosque Vivo: Hemos evaluado la ficha de su Cacao Criollo TA-0427. Solicitamos el envío de una muestra técnica oficial de 500g para análisis sensorial y medición de cadmio en nuestro laboratorio central de Tain-l\'Hermitage.',
+        timestamp: '16 May 2025 · 14:20'
+      },
+      {
+        id: 'msg-2',
+        sender: 'seller',
+        senderName: 'Asociación Bosque Vivo (Boca Pariamanu)',
+        text: 'Saludos cordiales Alexandre. Con mucho gusto preparamos la muestra técnica de 500g bajo protocolo fitosanitario SENASA en bolsa hermética GrainPro con precinto inviolable.',
+        timestamp: '16 May 2025 · 15:45'
+      },
+      {
+        id: 'msg-3',
+        sender: 'system',
+        senderName: 'Tracking Logístico TrazAmazon',
+        text: 'Muestra despachada vía DHL Green Express (DHL-PE-7729104). Precinto SENASA-MDD-2025-0482 verificado en blockchain.',
+        timestamp: '17 May 2025 · 10:15',
+        trackingInfo: 'DHL-PE-7729104'
+      }
+    ],
+    'TA-ORD-882': [
+      {
+        id: 'msg-4',
+        sender: 'buyer',
+        senderName: 'Alexandre Bonnat · Valrhona Artisans',
+        text: 'Requerimiento de cotización mayorista para 35 sacos GrainPro de 60kg (2,100 kg) de Café de Sombra Altura Lote TA-0319 para tostado de edición limitada.',
+        timestamp: '17 May 2025 · 09:45'
+      },
+      {
+        id: 'msg-5',
+        sender: 'seller',
+        senderName: 'Asociación Bosque Vivo',
+        text: 'Cotización aprobada a $9.80 USD/kg FOB Callao. Lote reservado en centro de acopio con trazabilidad satelital Sentinel-2.',
+        timestamp: '17 May 2025 · 11:30'
+      }
+    ]
+  });
+
+  // Estado para creación y edición de lotes
+  const [isCreateLotModalOpen, setIsCreateLotModalOpen] = useState(false);
+  const [isEditLotModalOpen, setIsEditLotModalOpen] = useState(false);
+  const [editingLot, setEditingLot] = useState<ProductLot | null>(null);
+
+  const [newLotForm, setNewLotForm] = useState({
+    name: '',
+    fruit: 'Cacao' as ProductLot['fruit'],
+    harvestTag: 'Cosecha Junio 2025',
+    availableKg: 2400,
+    totalKg: 2400,
+    priceFob: 8.5,
+    sensoryScore: '88.5 Pts SCAA',
+    sensoryNotes: 'Notas pronunciadas a panela, frutos rojos secos y acidez brillante.',
+    image: 'https://images.unsplash.com/photo-1541675154750-0444c7d51e8e?auto=format&fit=crop&w=800&q=80'
+  });
+
+  // Estado de confirmación de georreferenciación
+  const [locationConfirmed, setLocationConfirmed] = useState(true);
+  const [confirmedTime, setConfirmedTime] = useState('18 May 2025, 15:35');
 
   // Cargar perfil desde Supabase / Local al montar
   useEffect(() => {
@@ -3548,15 +3623,11 @@ function B2BDashboardPage() {
     }
   };
 
-  // Guardar perfil de cooperativa en Supabase
+  // Guardar perfil de cooperativa
   const handleSaveProfile = async (e: FormEvent) => {
     e.preventDefault();
-    const result = await saveCooperativeProfile(coopProfile);
-    if (result.cloudSynced) {
-      showNotice('Perfil de la cooperativa guardado y sincronizado en Supabase Cloud con éxito.');
-    } else {
-      showNotice('Perfil guardado en memoria local segura (Sincronizará con Supabase al detectar red).');
-    }
+    await saveCooperativeProfile(coopProfile);
+    showNotice('Perfil de la cooperativa guardado y sincronizado con éxito.');
   };
 
   // Auto-captura de coordenadas GPS
@@ -3570,12 +3641,98 @@ function B2BDashboardPage() {
     showNotice('Coordenadas GNSS capturadas del sensor de campo: -12.4667°, -69.2000° (Boca Pariamanu).');
   };
 
-  // Copiar script SQL
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(getSupabaseSchemaSql());
-    setSqlCopied(true);
-    showNotice('Script SQL DDL copiado al portapapeles. Listo para pegar en Supabase SQL Editor.');
-    setTimeout(() => setSqlCopied(false), 3000);
+  // Confirmar y fijar ubicación georreferenciada en mapa
+  const handleConfirmLocation = async () => {
+    setLocationConfirmed(true);
+    const nowStr = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    setConfirmedTime(`Hoy, ${nowStr}`);
+    await saveCooperativeProfile(coopProfile);
+    showNotice('Ubicación de parcela confirmada y fijada para cumplimiento regulatorio EUDR.');
+  };
+
+  // Enviar mensaje en chat de negociación estilo LinkedIn
+  const handleSendChatMessage = (orderId: string) => {
+    if (!chatMessageInput.trim()) return;
+    const newMsg = {
+      id: 'msg-' + Date.now(),
+      sender: 'seller' as const,
+      senderName: coopProfile.name,
+      text: chatMessageInput.trim(),
+      timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+    };
+    setOrderConversations((prev) => ({
+      ...prev,
+      [orderId]: [...(prev[orderId] || []), newMsg]
+    }));
+    setChatMessageInput('');
+    showNotice('Mensaje enviado al comprador con éxito.');
+  };
+
+  // Crear nuevo lote
+  const handleCreateLotSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!newLotForm.name.trim()) return;
+    const newId = `TA-${Math.floor(1000 + Math.random() * 9000)}`;
+    const created: ProductLot = {
+      id: newId,
+      fruit: newLotForm.fruit,
+      name: newLotForm.name,
+      cooperative: coopProfile.name,
+      region: coopProfile.region,
+      community: coopProfile.community,
+      priceFob: Number(newLotForm.priceFob),
+      unit: 'kg',
+      minimumMoq: '500 kg',
+      availableKg: Number(newLotForm.availableKg),
+      totalKg: Number(newLotForm.totalKg),
+      dispatchStatus: 'Disponible en Acopio',
+      harvestTag: newLotForm.harvestTag,
+      certifications: ['Orgánico USDA', 'EUDR Cero Deforestación', 'Fair Trade'],
+      image: newLotForm.image,
+      harvestDate: 'Mayo 2025',
+      farmerName: coopProfile.leaderName,
+      farmerImage: coopProfile.leaderImageUrl,
+      coordinates: `${coopProfile.latitude}°, ${coopProfile.longitude}°`,
+      sensoryScore: newLotForm.sensoryScore,
+      specs: {
+        k1: 'Humedad', v1: '6.8%',
+        k2: 'Fermentación', v2: '85%',
+        k3: 'Altitud', v3: '260 msnm'
+      },
+      sensoryNotes: newLotForm.sensoryNotes || 'Notas florales, acidez cítrica balanceada y retrogusto persistente.',
+      story: 'Cultivado bajo sistemas agroforestales en la cuenca del río Pariamanu.',
+      ndviScore: 0.89,
+      lotHash: '0x' + Math.random().toString(16).substring(2, 10).toUpperCase()
+    };
+    setLots((prev) => [created, ...prev]);
+    setIsCreateLotModalOpen(false);
+    setNewLotForm({
+      name: '',
+      fruit: 'Cacao',
+      harvestTag: 'Cosecha Junio 2025',
+      availableKg: 2000,
+      totalKg: 2000,
+      priceFob: 8.5,
+      sensoryScore: '88 Pts SCAA',
+      sensoryNotes: '',
+      image: 'https://images.unsplash.com/photo-1541675154750-0444c7d51e8e?auto=format&fit=crop&w=800&q=80'
+    });
+    showNotice(`Nueva cosecha ${created.name} (${created.id}) publicada con éxito.`);
+  };
+
+  // Abrir modal de edición de lote
+  const handleOpenEditLot = (lot: ProductLot) => {
+    setEditingLot({ ...lot });
+    setIsEditLotModalOpen(true);
+  };
+
+  // Guardar cambios de edición de lote
+  const handleSaveEditLot = (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingLot) return;
+    setLots((prev) => prev.map((l) => (l.id === editingLot.id ? editingLot : l)));
+    setIsEditLotModalOpen(false);
+    showNotice(`Condiciones del lote ${editingLot.name} (${editingLot.id}) actualizadas con éxito.`);
   };
 
   // KPIs Comprador
@@ -3587,6 +3744,7 @@ function B2BDashboardPage() {
     .filter((o) => o.escrowStatus === 'funded')
     .reduce((acc, curr) => acc + curr.totalUsd, 42100);
 
+  const selectedOrder = orders.find((o) => o.id === selectedOrderId) || orders[0];
   // KPIs Vendedor
   const pendingRfqsCount = orders.filter((o) => o.status === 'submitted').length;
   const totalLotsPublished = lots.length;
@@ -3609,7 +3767,7 @@ function B2BDashboardPage() {
 
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#e8f1ec] border border-[#2d6a4f]/25 text-[11px] font-mono font-semibold text-[#1b4332]">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-            Supabase Cloud: Conectado (yaxjpdhqjqsfqhladhl)
+            Red Mayorista: Operativa en Línea
           </div>
         </div>
 
@@ -3793,15 +3951,7 @@ function B2BDashboardPage() {
                       <ShieldCheck size={15} /> Auditoría Sentinel-2
                     </span>
                   </button>
-                  <button
-                    onClick={() => setSellerTab('supabase')}
-                    className={`b2b-sidebar-nav-item ${sellerTab === 'supabase' ? 'active' : ''}`}
-                    data-testid="seller-tab-supabase"
-                  >
-                    <span className="flex items-center gap-2">
-                      <FileCode size={15} /> Consola Supabase & SQL
-                    </span>
-                  </button>
+
                 </>
               )}
             </nav>
@@ -4164,127 +4314,299 @@ function B2BDashboardPage() {
                   </div>
                 )}
 
-                {/* 2. BANDEJA DE RFQS */}
+                {/* 2. BANDEJA DE RFQS ESTILO LINKEDIN (2 COLUMNAS) */}
                 {sellerTab === 'orders' && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h2 className="text-xl font-serif font-bold text-[#1b4332]">Bandeja de Solicitudes RFQ y Pedidos de Muestras</h2>
-                        <p className="text-xs text-gray-500">Responde o despacha muestras con compradores internacionales en tiempo real.</p>
+                        <p className="text-xs text-gray-500">Gestión directa de solicitudes comerciales y chat de negociación con compradores B2B.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Filtrar:</span>
+                        <select
+                          value={rfqFilter}
+                          onChange={(e) => setRfqFilter(e.target.value as any)}
+                          className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white font-sans text-gray-700"
+                        >
+                          <option value="all">Todas las solicitudes ({orders.length})</option>
+                          <option value="submitted">Nuevas (Acción requerida)</option>
+                          <option value="quoted">Cotizaciones Aprobadas</option>
+                          <option value="sample_dispatched">Muestras en Tránsito</option>
+                          <option value="contract_locked">Contratos Cerrados</option>
+                        </select>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      {orders.map((ord) => (
-                        <div key={ord.id} className="b2b-order-card" data-testid={`seller-order-${ord.id}`}>
-                          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded">
-                                  {ord.id}
-                                </span>
-                                <span className="font-bold text-sm text-[#1b4332]">{ord.buyerOrg}</span>
-                                <span className="text-xs text-gray-500">({ord.buyerCountry})</span>
+                    {/* Layout de 2 columnas LinkedIn */}
+                    <div className="b2b-inbox-layout">
+                      {/* Columna Izquierda: Lista de Solicitudes */}
+                      <div className="b2b-inbox-sidebar">
+                        <div className="p-3 border-b border-gray-200">
+                          <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Buscar comprador o ID..."
+                              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg font-sans focus:outline-none focus:border-[#2d6a4f]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="overflow-y-auto divide-y divide-gray-100 flex-1">
+                          {orders
+                            .filter((o) => rfqFilter === 'all' || o.status === rfqFilter)
+                            .map((ord) => {
+                              const isSelected = selectedOrderId === ord.id;
+                              return (
+                                <div
+                                  key={ord.id}
+                                  onClick={() => setSelectedOrderId(ord.id)}
+                                  className={`b2b-inbox-item ${isSelected ? 'active' : ''}`}
+                                  data-testid={`inbox-item-${ord.id}`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-[#1b4332] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                      {ord.buyerOrg.charAt(0)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between gap-1">
+                                        <h4 className="text-xs font-bold text-[#1b4332] truncate">{ord.buyerOrg}</h4>
+                                        <span className="text-[10px] text-gray-400 shrink-0 font-mono">16 May</span>
+                                      </div>
+                                      <p className="text-[11px] text-gray-600 truncate mt-0.5 font-medium">
+                                        {ord.lotName}
+                                      </p>
+                                      <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                                        Volumen: <b>{ord.requestedKg.toLocaleString()} kg</b> · {ord.id}
+                                      </p>
+                                      <div className="mt-2 flex items-center justify-between">
+                                        {ord.status === 'submitted' && (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800">
+                                            Nueva Solicitud
+                                          </span>
+                                        )}
+                                        {ord.status === 'quoted' && (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800">
+                                            Cotización Lista
+                                          </span>
+                                        )}
+                                        {ord.status === 'sample_dispatched' && (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                                            Muestra Despachada
+                                          </span>
+                                        )}
+                                        {ord.status === 'contract_locked' && (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800">
+                                            Escrow Formalizado
+                                          </span>
+                                        )}
+                                        <span className="text-[10px] text-gray-400">{ord.buyerCountry}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+
+                      {/* Columna Derecha: Detalle de Requerimiento + Chat */}
+                      {selectedOrder ? (
+                        <div className="flex-1 flex flex-col min-w-0 bg-white">
+                          {/* Header del Chat */}
+                          <div className="p-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3 bg-[#faf9f6]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-[#1b4332] text-white flex items-center justify-center font-bold text-sm">
+                                {selectedOrder.buyerOrg.charAt(0)}
                               </div>
-                              <p className="text-xs text-gray-600 mt-1">
-                                Requerimiento: <b>{ord.lotName}</b> (Lote {ord.lotId}) · Volumen: <b>{ord.requestedKg.toLocaleString()} kg</b> · Fecha: {ord.createdAt}
-                              </p>
-                              {ord.notes && <p className="text-xs italic text-gray-500 mt-0.5">Nota: {ord.notes}</p>}
+                              <div className="text-left">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-bold text-[#1b4332]">{selectedOrder.buyerOrg}</h3>
+                                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                                    Comprador Verificado
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  Responsable: Alexandre Bonnat · {selectedOrder.buyerCountry} · Orden {selectedOrder.id}
+                                </p>
+                              </div>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              {ord.status === 'submitted' && (
-                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                                  Nueva Solicitud (Acción Requerida)
-                                </span>
-                              )}
-                              {ord.status === 'quoted' && (
-                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
-                                  Cotización Aprobada por Cooperativa
-                                </span>
-                              )}
-                              {ord.status === 'sample_dispatched' && (
-                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                  Muestra Despachada (SENASA Emitido)
-                                </span>
-                              )}
-                              {ord.status === 'contract_locked' && (
-                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
-                                  Contrato Cerrado con Escrow Protegido
-                                </span>
-                              )}
+                              <Link href={`/lote/${selectedOrder.lotId}`} className="button button-small button-outline text-xs">
+                                Ver Ficha de Lote
+                              </Link>
                             </div>
                           </div>
 
-                          <div className="pt-3 flex flex-wrap items-center justify-between gap-3">
-                            <div className="text-xs text-gray-600">
-                              {ord.trackingCode ? (
-                                <span className="font-mono text-[#1b4332]">
-                                  Guía Asignada: <b>{ord.courier} ({ord.trackingCode})</b> · Precinto: <b>{ord.senasaGuide}</b>
-                                </span>
-                              ) : (
-                                <span>Sin despacho físico registrado aún.</span>
-                              )}
+                          {/* Tarjeta de Resumen Comercial estilo LinkedIn Project Card */}
+                          <div className="p-4 bg-[#fbf9f5] border-b border-gray-200 text-left">
+                            <div className="flex items-start gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+                              <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                                <img
+                                  src={lots.find(l => l.id === selectedOrder.lotId)?.image || 'https://images.unsplash.com/photo-1541675154750-0444c7d51e8e?auto=format&fit=crop&w=800&q=80'}
+                                  alt={selectedOrder.lotName}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0 text-left">
+                                <div className="flex items-center justify-between gap-2">
+                                  <h4 className="text-xs font-bold text-[#1b4332] truncate">{selectedOrder.lotName}</h4>
+                                  <span className="font-mono text-xs font-bold text-[#1b4332]">
+                                    ${selectedOrder.pricePerKg.toFixed(2)} USD / kg FOB
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-600 mt-0.5">
+                                  Volumen Solicitado: <b>{selectedOrder.requestedKg.toLocaleString()} kg</b> · Modalidad: {selectedOrder.type === 'sample' ? 'Muestra Técnica de Calidad' : 'Pedido Comercial Mayorista'}
+                                </p>
+                                {selectedOrder.notes && (
+                                  <p className="text-xs text-gray-500 italic mt-1 bg-gray-50 p-2 rounded border border-gray-100">
+                                    "{selectedOrder.notes}"
+                                  </p>
+                                )}
+                              </div>
                             </div>
+                          </div>
 
+                          {/* Hilo de Mensajes (Chat) */}
+                          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#ffffff] min-h-[260px] text-left">
+                            {(orderConversations[selectedOrder.id] || []).map((msg) => {
+                              if (msg.sender === 'system') {
+                                return (
+                                  <div key={msg.id} className="my-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center text-xs text-emerald-900">
+                                    <p className="font-bold">{msg.text}</p>
+                                    <span className="text-[10px] text-emerald-700 block mt-1">{msg.timestamp}</span>
+                                  </div>
+                                );
+                              }
+                              const isMe = msg.sender === 'seller';
+                              return (
+                                <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                  <span className="text-[10px] text-gray-400 mb-1 px-1">{msg.senderName} · {msg.timestamp}</span>
+                                  <div className={isMe ? 'b2b-chat-bubble-seller' : 'b2b-chat-bubble-buyer'}>
+                                    <p>{msg.text}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Barra de Acciones Comerciales Directas */}
+                          <div className="p-3 bg-[#fbf9f5] border-t border-gray-200 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              {ord.status === 'submitted' && (
+                              {selectedOrder.status === 'submitted' && (
                                 <>
                                   <button
                                     onClick={() => {
-                                      updateOrderStatus(ord.id, 'quoted');
-                                      showNotice(`Cotización para orden ${ord.id} aprobada con éxito. Notificación enviada al comprador.`);
+                                      updateOrderStatus(selectedOrder.id, 'quoted');
+                                      showNotice(`Cotización para orden ${selectedOrder.id} aprobada con éxito.`);
                                     }}
-                                    className="b2b-action-btn-green"
-                                    data-testid={`btn-accept-quote-${ord.id}`}
+                                    className="b2b-action-btn-green text-xs"
+                                    data-testid={`btn-accept-quote-${selectedOrder.id}`}
                                   >
                                     <Check size={14} /> Aceptar Cotización (RFQ)
                                   </button>
-
                                   <button
                                     onClick={() => {
                                       const tracking = 'DHL-PE-' + Math.floor(1000000 + Math.random() * 9000000);
                                       const senasa = 'SENASA-MDD-2025-' + Math.floor(1000 + Math.random() * 9000);
-                                      updateOrderStatus(ord.id, 'sample_dispatched', {
+                                      updateOrderStatus(selectedOrder.id, 'sample_dispatched', {
                                         trackingCode: tracking,
                                         courier: 'DHL Green Express',
                                         senasaGuide: senasa,
                                       });
-                                      showNotice(`Muestra despachada para ${ord.buyerOrg}. Guía Courier: ${tracking} y precinto fitosanitario ${senasa}.`);
+                                      const sysMsg = {
+                                        id: 'msg-' + Date.now(),
+                                        sender: 'system' as const,
+                                        senderName: 'Tracking Logístico DHL',
+                                        text: `Muestra despachada para ${selectedOrder.buyerOrg}. Guía Courier: ${tracking} y precinto fitosanitario ${senasa}.`,
+                                        timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+                                      };
+                                      setOrderConversations(prev => ({
+                                        ...prev,
+                                        [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg]
+                                      }));
+                                      showNotice(`Muestra despachada. Guía ${tracking}.`);
                                     }}
-                                    className="b2b-action-btn-brown"
-                                    data-testid={`btn-dispatch-sample-${ord.id}`}
+                                    className="b2b-action-btn-brown text-xs"
+                                    data-testid={`btn-dispatch-sample-${selectedOrder.id}`}
                                   >
-                                    <Truck size={14} /> Despachar Muestra (Guía SENASA)
+                                    <Truck size={14} /> Despachar Muestra DHL (SENASA)
                                   </button>
                                 </>
                               )}
 
-                              {(ord.status === 'quoted' || ord.status === 'sample_dispatched') && (
+                              {(selectedOrder.status === 'quoted' || selectedOrder.status === 'sample_dispatched') && (
                                 <button
                                   onClick={() => {
-                                    updateOrderStatus(ord.id, 'contract_locked', {
+                                    updateOrderStatus(selectedOrder.id, 'contract_locked', {
                                       escrowStatus: 'funded',
-                                      trackingCode: ord.trackingCode || 'HAPAG-LLOYD-FCL-' + Math.floor(1000 + Math.random() * 9000),
-                                      courier: ord.courier || 'Naviera Marítima Callao',
-                                      senasaGuide: ord.senasaGuide || 'SENASA-EXP-2025-9941'
+                                      trackingCode: selectedOrder.trackingCode || 'HAPAG-LLOYD-FCL-' + Math.floor(1000 + Math.random() * 9000),
+                                      courier: selectedOrder.courier || 'Naviera Marítima Callao',
+                                      senasaGuide: selectedOrder.senasaGuide || 'SENASA-EXP-2025-9941'
                                     });
-                                    showNotice(`Contrato comercial formalizado para ${ord.buyerOrg}. Fondos en custodia Escrow asegurados al 100%.`);
+                                    const sysMsg = {
+                                      id: 'msg-' + Date.now(),
+                                      sender: 'system' as const,
+                                      senderName: 'Custodia Escrow TrazAmazon',
+                                      text: `Contrato comercial formalizado para ${selectedOrder.buyerOrg}. Fondos en custodia Escrow asegurados al 100%.`,
+                                      timestamp: 'Hoy, ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+                                    };
+                                    setOrderConversations(prev => ({
+                                      ...prev,
+                                      [selectedOrder.id]: [...(prev[selectedOrder.id] || []), sysMsg]
+                                    }));
+                                    showNotice(`Contrato con Escrow formalizado para ${selectedOrder.buyerOrg}.`);
                                   }}
-                                  className="b2b-action-btn-green"
-                                  data-testid={`btn-lock-contract-${ord.id}`}
+                                  className="b2b-action-btn-green text-xs"
+                                  data-testid={`btn-lock-contract-${selectedOrder.id}`}
                                 >
                                   <ShieldCheck size={14} /> Formalizar Contrato con Escrow
                                 </button>
                               )}
-
-                              <Link href={`/lote/${ord.lotId}`} className="button button-small button-outline text-xs">
-                                Ver Lote
-                              </Link>
                             </div>
+
+                            {selectedOrder.trackingCode && (
+                              <span className="font-mono text-[11px] text-[#1b4332] font-bold">
+                                Guía: {selectedOrder.courier} ({selectedOrder.trackingCode})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Formulario de Envío de Mensaje */}
+                          <div className="p-3 border-t border-gray-200 bg-white">
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSendChatMessage(selectedOrder.id);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <input
+                                type="text"
+                                value={chatMessageInput}
+                                onChange={(e) => setChatMessageInput(e.target.value)}
+                                placeholder="Escribe una respuesta o propuesta comercial al comprador..."
+                                className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-[#2d6a4f]"
+                                data-testid="chat-message-input"
+                              />
+                              <button
+                                type="submit"
+                                disabled={!chatMessageInput.trim()}
+                                className="button button-small button-primary text-xs flex items-center gap-1.5 px-4 disabled:opacity-50"
+                                data-testid="btn-send-chat"
+                              >
+                                <Send size={13} /> Enviar
+                              </button>
+                            </form>
                           </div>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center p-8 text-gray-400 text-xs">
+                          Selecciona una solicitud en la lista lateral para ver el historial y responder.
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -4292,11 +4614,19 @@ function B2BDashboardPage() {
                 {/* 3. GESTIÓN DE LOTES Y SUBIDA DE FOTOS DE PRODUCTO */}
                 {sellerTab === 'lots' && (
                   <div>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                       <div>
                         <h2 className="text-xl font-serif font-bold text-[#1b4332]">Gestión de Cosechas & Fotografías de Lotes</h2>
-                        <p className="text-xs text-gray-500">Actualiza las fotografías, stock y condiciones comerciales de tus cosechas activas.</p>
+                        <p className="text-xs text-gray-500">Publica nuevas cosechas, actualiza fotografías, stock y condiciones comerciales en tiempo real.</p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsCreateLotModalOpen(true)}
+                        className="button button-small button-earth text-xs flex items-center gap-1.5"
+                        data-testid="btn-create-lot"
+                      >
+                        <Plus size={14} /> Crear Nueva Cosecha / Lote
+                      </button>
                     </div>
 
                     <div className="space-y-4">
@@ -4343,8 +4673,16 @@ function B2BDashboardPage() {
                           </div>
 
                           <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditLot(l)}
+                              className="button button-small button-outline text-xs flex items-center gap-1.5"
+                              data-testid={`btn-edit-lot-${l.id}`}
+                            >
+                              <Edit3 size={13} /> Editar Lote
+                            </button>
                             <label className="button button-small button-outline text-xs cursor-pointer">
-                              <Upload size={13} /> Subir Foto Lote
+                              <Upload size={13} /> Subir Foto
                               <input
                                 type="file"
                                 accept="image/*"
@@ -4575,7 +4913,7 @@ function B2BDashboardPage() {
                           className="button button-dark w-full justify-center text-sm py-2.5"
                           data-testid="btn-save-profile"
                         >
-                          <Save size={16} /> Guardar Cambios en Supabase & Local
+                          <Save size={16} /> Guardar Cambios de Perfil
                         </button>
                       </form>
 
@@ -4641,7 +4979,7 @@ function B2BDashboardPage() {
                   </div>
                 )}
 
-                {/* 5. UBICACIÓN SATELITAL Y GEORREFERENCIACIÓN */}
+                {/* 5. UBICACIÓN SATELITAL Y GEORREFERENCIACIÓN OPENSTREETMAP */}
                 {sellerTab === 'location' && (
                   <div className="max-w-4xl">
                     <div className="mb-6">
@@ -4651,7 +4989,29 @@ function B2BDashboardPage() {
                       </p>
                     </div>
 
-                    <div className="b2b-location-card text-left space-y-6">
+                    <div className="b2b-location-card text-left space-y-5">
+                      {/* Visor Interactivo OpenStreetMap Embebido */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#1b4332] flex items-center gap-1.5">
+                            <Navigation size={14} className="text-[#2d6a4f]" /> Visor Satelital OpenStreetMap en Vivo
+                          </span>
+                          <span className="text-[11px] font-mono text-gray-500">
+                            Marcador: {coopProfile.latitude}°, {coopProfile.longitude}°
+                          </span>
+                        </div>
+                        <div className="rounded-xl overflow-hidden border border-gray-200 shadow-inner bg-gray-100 relative">
+                          <iframe
+                            title="Visor OpenStreetMap Parcela"
+                            width="100%"
+                            height="340"
+                            style={{ border: 0 }}
+                            loading="lazy"
+                            src={`https://www.openstreetmap.org/export/embed.html?bbox=${(Number(coopProfile.longitude) || -69.2) - 0.02}%2C${(Number(coopProfile.latitude) || -12.4667) - 0.02}%2C${(Number(coopProfile.longitude) || -69.2) + 0.02}%2C${(Number(coopProfile.latitude) || -12.4667) + 0.02}&layer=mapnik&marker=${coopProfile.latitude}%2C${coopProfile.longitude}`}
+                          />
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <span className="text-xs font-bold text-gray-700 block mb-1">Latitud Satelital</span>
@@ -4682,25 +5042,50 @@ function B2BDashboardPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={handleAutoCaptureGps}
-                          className="button button-earth text-xs"
-                          data-testid="btn-auto-gps"
-                        >
-                          <LocateFixed size={14} /> Auto-capturar Coordenadas GNSS en Parcela
-                        </button>
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleConfirmLocation}
+                            className="button button-earth text-xs flex items-center gap-1.5"
+                            data-testid="btn-confirm-location"
+                          >
+                            <CheckCircle2 size={15} /> Confirmar Ubicación Georreferenciada
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleAutoCaptureGps}
+                            className="button button-outline text-xs flex items-center gap-1.5"
+                            data-testid="btn-auto-gps"
+                          >
+                            <LocateFixed size={14} /> Auto-capturar Coordenadas GNSS
+                          </button>
+                        </div>
 
                         <a
                           href={`https://www.openstreetmap.org/?mlat=${coopProfile.latitude}&mlon=${coopProfile.longitude}#map=14/${coopProfile.latitude}/${coopProfile.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="button button-outline text-xs"
+                          className="text-xs text-[#2d6a4f] hover:text-[#1b4332] font-semibold flex items-center gap-1"
                         >
-                          <Navigation size={14} /> Abrir en OpenStreetMap en Vivo <ExternalLink size={12} />
+                          <ExternalLink size={13} /> Abrir en pantalla completa
                         </a>
                       </div>
+
+                      {locationConfirmed && (
+                        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                            <span>
+                              <b>Ubicación Georreferenciada Confirmada</b> · Sede en {coopProfile.community} ({coopProfile.latitude}°, {coopProfile.longitude}°). Acreditado: {confirmedTime}.
+                            </span>
+                          </div>
+                          <span className="font-mono text-[10px] font-bold bg-white text-emerald-800 px-2 py-0.5 rounded border border-emerald-300 shrink-0">
+                            VALIDADO IN-SITU
+                          </span>
+                        </div>
+                      )}
 
                       <div className="p-4 bg-[#faf6f0] rounded-xl border border-gray-200">
                         <span className="text-xs font-bold text-[#1b4332] block mb-1">
@@ -4750,66 +5135,232 @@ function B2BDashboardPage() {
                   </div>
                 )}
 
-                {/* 7. CONSOLA SUPABASE Y SCRIPT SQL */}
-                {sellerTab === 'supabase' && (
-                  <div className="max-w-4xl text-left space-y-6">
-                    <div>
-                      <h2 className="text-xl font-serif font-bold text-[#1b4332]">Consola de Integración Supabase Cloud</h2>
-                      <p className="text-xs text-gray-500">
-                        Credenciales y script DDL de producción para inicializar las tablas en tu proyecto de Supabase.
-                      </p>
-                    </div>
-
-                    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-                        <div>
-                          <span className="text-gray-500 block font-sans">Endpoint del Proyecto</span>
-                          <span className="font-bold text-[#1b4332]">{SUPABASE_URL}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500 block font-sans">Identificador de Proyecto (Ref)</span>
-                          <span className="font-bold text-[#2d6a4f]">yaxjpdhqjqsfqhladhl</span>
-                        </div>
-                      </div>
-
-                      <div className="p-3 rounded-lg bg-[#e8f1ec] text-[#1b4332] text-xs flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 size={16} className="text-[#2d6a4f]" />
-                          <span>Conexión híbrida activa (Supabase REST + LocalStorage Fallback Resiliente).</span>
-                        </div>
-                        <span className="font-bold font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-[#2d6a4f]/20">
-                          PRODUCCIÓN READY
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-sm font-bold text-[#1b4332]">Script DDL SQL de Estructura de Tablas</h3>
-                          <p className="text-xs text-gray-500">Copia este código y ejecútalo en el SQL Editor de tu consola de Supabase.</p>
-                        </div>
-                        <button
-                          onClick={handleCopySql}
-                          className="button button-small button-dark text-xs flex items-center gap-1.5"
-                          data-testid="btn-copy-sql"
-                        >
-                          {sqlCopied ? <Check size={14} /> : <Copy size={14} />}
-                          {sqlCopied ? '¡Copiado!' : 'Copiar Script SQL'}
-                        </button>
-                      </div>
-
-                      <pre className="b2b-sql-box">
-                        <code>{getSupabaseSchemaSql()}</code>
-                      </pre>
-                    </div>
-                  </div>
-                )}
-              </>
+                </>
             )}
           </div>
         </div>
       </div>
+
+
+      {/* MODAL CREAR NUEVA COSECHA / LOTE */}
+      {isCreateLotModalOpen && (
+        <div className="b2b-modal-backdrop" onClick={() => setIsCreateLotModalOpen(false)}>
+          <div className="b2b-modal-panel p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-serif font-bold text-[#1b4332]">Registrar Nueva Cosecha / Lote Mayorista</h3>
+                <p className="text-xs text-gray-500">Publica un nuevo lote de exportación en el catálogo de TrazAmazon.</p>
+              </div>
+              <button onClick={() => setIsCreateLotModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateLotSubmit} className="space-y-4 pt-4 text-left">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Nombre Comercial de la Cosecha</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej. Café de Sombra Altura · Bourbon Lavado"
+                  value={newLotForm.name}
+                  onChange={(e) => setNewLotForm({ ...newLotForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  data-testid="input-new-lot-name"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Categoría / Fruto</label>
+                  <select
+                    value={newLotForm.fruit}
+                    onChange={(e) => setNewLotForm({ ...newLotForm, fruit: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                  >
+                    <option value="Cacao">Cacao Nativo</option>
+                    <option value="Café">Café de Sombra</option>
+                    <option value="Castaña">Castaña Amazónica</option>
+                    <option value="Aguaje">Pulpa de Aguaje</option>
+                    <option value="Copoazú">Copoazú Fino</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Etiqueta de Cosecha</label>
+                  <input
+                    type="text"
+                    value={newLotForm.harvestTag}
+                    onChange={(e) => setNewLotForm({ ...newLotForm, harvestTag: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Stock Inicial (kg)</label>
+                  <input
+                    type="number"
+                    min="100"
+                    value={newLotForm.availableKg}
+                    onChange={(e) => setNewLotForm({ ...newLotForm, availableKg: Number(e.target.value), totalKg: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Precio FOB ($/kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    value={newLotForm.priceFob}
+                    onChange={(e) => setNewLotForm({ ...newLotForm, priceFob: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Puntaje Sensorial</label>
+                  <input
+                    type="text"
+                    value={newLotForm.sensoryScore}
+                    onChange={(e) => setNewLotForm({ ...newLotForm, sensoryScore: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Notas Sensoriales / Descriptores</label>
+                <textarea
+                  rows={2}
+                  value={newLotForm.sensoryNotes}
+                  onChange={(e) => setNewLotForm({ ...newLotForm, sensoryNotes: e.target.value })}
+                  placeholder="Ej. Notas de cacao profundo, jazmín silvestre y panela..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">URL de Imagen del Producto</label>
+                <input
+                  type="text"
+                  value={newLotForm.image}
+                  onChange={(e) => setNewLotForm({ ...newLotForm, image: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateLotModalOpen(false)}
+                  className="button button-outline text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="button button-primary text-xs flex items-center gap-1.5"
+                  data-testid="btn-submit-create-lot"
+                >
+                  <Plus size={14} /> Publicar Nueva Cosecha
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR COSECHA / LOTE */}
+      {isEditLotModalOpen && editingLot && (
+        <div className="b2b-modal-backdrop" onClick={() => setIsEditLotModalOpen(false)}>
+          <div className="b2b-modal-panel p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-serif font-bold text-[#1b4332]">Editar Lote · {editingLot.id}</h3>
+                <p className="text-xs text-gray-500">Actualiza las condiciones de venta, stock y perfil de cata.</p>
+              </div>
+              <button onClick={() => setIsEditLotModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditLot} className="space-y-4 pt-4 text-left">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Nombre Comercial</label>
+                <input
+                  type="text"
+                  required
+                  value={editingLot.name}
+                  onChange={(e) => setEditingLot({ ...editingLot, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  data-testid="input-edit-lot-name"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Stock Disponible (kg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingLot.availableKg}
+                    onChange={(e) => setEditingLot({ ...editingLot, availableKg: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Precio FOB ($/kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={editingLot.priceFob}
+                    onChange={(e) => setEditingLot({ ...editingLot, priceFob: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Puntaje Sensorial</label>
+                  <input
+                    type="text"
+                    value={editingLot.sensoryScore}
+                    onChange={(e) => setEditingLot({ ...editingLot, sensoryScore: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Notas Sensoriales / Descriptores</label>
+                <textarea
+                  rows={2}
+                  value={editingLot.sensoryNotes}
+                  onChange={(e) => setEditingLot({ ...editingLot, sensoryNotes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditLotModalOpen(false)}
+                  className="button button-outline text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="button button-primary text-xs flex items-center gap-1.5"
+                  data-testid="btn-save-lot-changes"
+                >
+                  <Save size={14} /> Guardar Cambios del Lote
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </main>
