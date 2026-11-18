@@ -221,3 +221,384 @@ button,a { -webkit-tap-highlight-color: transparent; }
 @media(max-width:375px) {
  .header-actions .button { max-width:125px; }.hero h1 { font-size:58px; }.hero-cta .button { font-size:9px;padding:12px; }.hero-cta .text-link { font-size:10px; }.section-heading h2 { font-size:31px; }.phone-screen { padding-inline:13px; }.phone-frame { padding:8px; }
 }
+
+/* ==========================================================================
+   TRAZAMAZON PROTOTYPE ENHANCEMENTS — IMPACT STARTUP COMPETITION 2027
+   ========================================================================== */
+
+/* Floating Global Switcher Pill */
+.floating-prototype-nav {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(20, 50, 35, 0.92);
+  border: 1px solid rgba(212, 163, 115, 0.35);
+  box-shadow: 0 10px 30px -5px rgba(10, 30, 20, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  padding: 5px 8px;
+  border-radius: 9999px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-prototype-nav:hover {
+  border-color: rgba(212, 163, 115, 0.65);
+  box-shadow: 0 14px 38px -4px rgba(10, 30, 20, 0.45);
+}
+
+.nav-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(176, 125, 59, 0.28);
+  border: 1px solid rgba(212, 163, 115, 0.4);
+  color: #f7e6ce;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  margin-right: 4px;
+}
+
+.nav-pill-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d1ded5;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-pill-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.nav-pill-item.active {
+  background: #2d6a4f;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .floating-prototype-nav {
+    top: auto;
+    bottom: 12px;
+    padding: 4px 6px;
+    max-width: calc(100vw - 20px);
+    overflow-x: auto;
+  }
+  .nav-pill-badge {
+    display: none;
+  }
+  .nav-pill-item {
+    font-size: 10px;
+    padding: 5px 9px;
+  }
+}
+
+/* Modal Nuevo Registro en Parcela (App de Campo) */
+.field-modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(15, 35, 24, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-radius: 34px;
+  overflow: hidden;
+  animation: modalFadeIn 0.22s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.field-modal-sheet {
+  background: #faf8f2;
+  border-top: 2px solid #2d6a4f;
+  border-radius: 22px 22px 0 0;
+  padding: 18px 18px 24px;
+  max-height: 85%;
+  overflow-y: auto;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.25);
+  animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.field-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e1d5;
+}
+
+.field-modal-header h3 {
+  margin: 0;
+  font-family: var(--app-font-serif);
+  font-size: 18px;
+  color: #1b4332;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-modal-close {
+  background: #edeae0;
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: #435e4b;
+  cursor: pointer;
+}
+
+/* Big Action Button: Nuevo Registro en Parcela */
+.btn-new-harvest {
+  width: 100%;
+  background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(27, 67, 50, 0.3);
+  transition: all 0.2s ease;
+  margin: 10px 0 14px;
+}
+
+.btn-new-harvest:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(27, 67, 50, 0.4);
+}
+
+/* Sync progress animated bar */
+.sync-progress-container {
+  background: #e4ebe0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  border: 1px solid #c9d8c4;
+}
+
+.sync-progress-bar-bg {
+  height: 6px;
+  background: #cad7c5;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.sync-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b07d3b, #2d6a4f);
+  border-radius: 4px;
+  transition: width 0.35s ease;
+}
+
+/* Enhanced Satellite Radar Monitor */
+.satellite-radar-box {
+  position: relative;
+  background: #12281c;
+  border: 1px solid #2d6a4f;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 210px;
+  margin-top: 14px;
+}
+
+.satellite-radar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.85;
+}
+
+.satellite-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(45, 106, 79, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 106, 79, 0.25) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.radar-sweep {
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(from 0deg at 50% 50%, rgba(176, 125, 59, 0.22) 0deg, transparent 60deg, transparent 360deg);
+  animation: radarRotate 6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes radarRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.satellite-badge-group {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 5;
+}
+
+.satellite-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(18, 40, 28, 0.85);
+  border: 1px solid rgba(82, 183, 136, 0.5);
+  color: #74c69d;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.ndvi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(18, 40, 28, 0.85);
+  border: 1px solid rgba(212, 163, 115, 0.5);
+  color: #f0caa3;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.satellite-coords-pill {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(18, 40, 28, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e5ede7;
+  font-size: 8px;
+  font-family: monospace;
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 5;
+  backdrop-filter: blur(4px);
+}
+
+.parcel-polygon-outline {
+  position: absolute;
+  top: 25%;
+  left: 32%;
+  width: 36%;
+  height: 48%;
+  border: 2px dashed #b07d3b;
+  background: rgba(176, 125, 59, 0.15);
+  border-radius: 4px;
+  transform: rotate(-8deg);
+  box-shadow: 0 0 12px rgba(176, 125, 59, 0.4);
+  z-index: 3;
+}
+
+.pulse-target {
+  position: absolute;
+  top: 48%;
+  left: 49%;
+  width: 14px;
+  height: 14px;
+  background: #52b788;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  box-shadow: 0 0 0 0 rgba(82, 183, 136, 0.7);
+  animation: pulseRadar 1.8s infinite;
+}
+
+@keyframes pulseRadar {
+  0% { box-shadow: 0 0 0 0 rgba(82, 183, 136, 0.7); }
+  70% { box-shadow: 0 0 0 14px rgba(82, 183, 136, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(82, 183, 136, 0); }
+}
+
+/* Dual action buttons on product card */
+.product-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-card-trace {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #1b4332;
+  background: #e8efe5;
+  border: 1px solid #c9d8c4;
+  border-radius: 4px;
+  padding: 6px 9px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.btn-card-trace:hover {
+  background: #2d6a4f;
+  color: #ffffff;
+  border-color: #2d6a4f;
+}
+
+.btn-card-quote {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #b07d3b;
+  border: 1px solid #94652a;
+  border-radius: 4px;
+  padding: 6px 9px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-card-quote:hover {
+  background: #8e5e2b;
+}
+
