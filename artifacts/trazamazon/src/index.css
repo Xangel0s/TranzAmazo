@@ -226,74 +226,7 @@ button,a { -webkit-tap-highlight-color: transparent; }
    TRAZAMAZON PROTOTYPE ENHANCEMENTS — IMPACT STARTUP COMPETITION 2027
    ========================================================================== */
 
-/* Floating Global Switcher Pill */
-.floating-prototype-nav {
-  position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 99;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(20, 50, 35, 0.92);
-  border: 1px solid rgba(212, 163, 115, 0.35);
-  box-shadow: 0 10px 30px -5px rgba(10, 30, 20, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  padding: 5px 8px;
-  border-radius: 9999px;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
 
-.floating-prototype-nav:hover {
-  border-color: rgba(212, 163, 115, 0.65);
-  box-shadow: 0 14px 38px -4px rgba(10, 30, 20, 0.45);
-}
-
-
-
-.nav-pill-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #d1ded5;
-  text-decoration: none;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 9999px;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.nav-pill-item:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.nav-pill-item.active {
-  background: #2d6a4f;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-@media (max-width: 768px) {
-  .floating-prototype-nav {
-    top: auto;
-    bottom: 12px;
-    padding: 4px 6px;
-    max-width: calc(100vw - 20px);
-    overflow-x: auto;
-  }
-  .nav-pill-badge {
-    display: none;
-  }
-  .nav-pill-item {
-    font-size: 10px;
-    padding: 5px 9px;
-  }
-}
 
 /* Modal Nuevo Registro en Parcela (App de Campo) */
 .field-modal-overlay {

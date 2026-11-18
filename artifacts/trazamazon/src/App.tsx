@@ -302,38 +302,7 @@ function loadLocalRecords(): LocalHarvestRecord[] {
   ];
 }
 
-/**
- * Barra Flotante Global de Demostración (Clean Production Navigator)
- */
-function PrototypeFloatingNav() {
-  const [location] = useLocation();
 
-  return (
-    <nav className="floating-prototype-nav" aria-label="Navegación Rápida">
-      <Link
-        href="/marketplace"
-        className={`nav-pill-item ${location === '/' || location === '/marketplace' ? 'active' : ''}`}
-        data-testid="pill-marketplace"
-      >
-        <Leaf size={13} /> Marketplace B2B
-      </Link>
-      <Link
-        href="/lote/TA-0427"
-        className={`nav-pill-item ${location.startsWith('/lote') ? 'active' : ''}`}
-        data-testid="pill-lot-qr"
-      >
-        <QrCode size={13} /> Visor QR Lote
-      </Link>
-      <Link
-        href="/app"
-        className={`nav-pill-item ${location === '/app' ? 'active' : ''}`}
-        data-testid="pill-field-app"
-      >
-        <Smartphone size={13} /> App Campo Offline
-      </Link>
-    </nav>
-  );
-}
 
 /**
  * Header de Navegación Estándar de la Plataforma
@@ -557,7 +526,6 @@ function Home() {
 
   return (
     <main className="grain">
-      <PrototypeFloatingNav />
       <Header active="home" />
 
       {/* Hero Section */}
@@ -841,7 +809,6 @@ function Marketplace() {
 
   return (
     <main className="bg-[#faf9f4] min-h-screen text-[#1b1c19] font-dmsans">
-      <PrototypeFloatingNav />
       <Header active="marketplace" />
 
       {/* TOP EDITORIAL HEADER */}
@@ -1452,7 +1419,6 @@ function LotDetail() {
 
   return (
     <main className="grain">
-      <PrototypeFloatingNav />
       <Header active="lot" />
 
       <div className="lot-page page-in">
@@ -1931,7 +1897,6 @@ function FieldApp() {
 
   return (
     <main className="field-page grain">
-      <PrototypeFloatingNav />
 
       {/* Topbar de la App de Campo */}
       <div className="field-topbar">
