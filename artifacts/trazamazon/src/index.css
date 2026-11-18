@@ -2336,3 +2336,111 @@ button,a { -webkit-tap-highlight-color: transparent; }
   border-bottom: 1px solid #eef2ed;
   color: #1b1c19;
 }
+
+
+/* ==========================================================================
+   FASE 3: SISTEMA DE REPUTACIÓN B2B (% E-COMMERCE) & INTERRUPTORES DE SECCIÓN
+   ========================================================================== */
+
+/* Barra de Reputación Interactiva */
+.btn-vendor-rating-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.75rem;
+  color: #1b1c19;
+}
+
+.btn-vendor-rating-trigger:hover {
+  background-color: #f1f6f3;
+  color: #1b4332;
+}
+
+/* Modal de Reputación Comercial del Vendedor */
+.reputation-score-box {
+  background: linear-gradient(135deg, #f4f7f2 0%, #eef5eb 100%);
+  border: 1px solid #c9d8c4;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.rating-star-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  width: 100%;
+}
+
+.rating-bar-track {
+  flex: 1;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.rating-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d97736 0%, #b07d3b 100%);
+  border-radius: 9999px;
+  transition: width 0.4s ease-out;
+}
+
+.rating-criterion-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Banner de Sección Desactivada en Modo Edición */
+.section-disabled-banner {
+  background-color: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #6b7280;
+}
+
+/* Botón Toggle de Sección */
+.section-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.section-toggle-btn.active {
+  background-color: #eef3eb;
+  color: #143d29;
+  border: 1px solid #c9d8c4;
+}
+
+.section-toggle-btn.inactive {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
