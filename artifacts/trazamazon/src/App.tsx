@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Link, Route, Switch, Router as WouterRouter, useLocation, useRoute } from 'wouter';
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Building2, Check, CheckCircle2, LogOut,
+  ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Award, BadgeCheck, Building2, Check, CheckCircle2, Droplets, FlaskConical, LogOut, Mountain, Thermometer,
   ChevronDown, ChevronLeft, ChevronRight, CircleDot, Clock, Cloud, CloudOff, CloudUpload,
   Coffee, Compass, Download, ExternalLink, Eye, FileCheck, FileText, Filter, Globe2, Handshake, Heart, Info,
   Layers, LayoutGrid, Leaf, List, LocateFixed, Lock, MapPin, Menu, Minus, PackageCheck,
@@ -1638,8 +1638,22 @@ function Marketplace() {
                         </h2>
 
                         {/* Community Description */}
-                        <p className="text-xs text-[#727973] leading-relaxed">
-                          {lot.community}. Manejado por la {lot.cooperative}.
+                        {/* Clickeable Seller Profile Chip */}
+                        <div className="my-2.5">
+                          <Link
+                            href={`/lote/${lot.id}`}
+                            className="card-seller-chip group"
+                            title={`Ver perfil y credenciales de ${lot.cooperative}`}
+                            data-testid={`link-seller-profile-${lot.id}`}
+                          >
+                            <span className="card-seller-chip-avatar">{lot.cooperative[0]}</span>
+                            <span className="truncate max-w-[190px]">{lot.cooperative}</span>
+                            <ShieldCheck size={13} className="text-[#2a7a4c] shrink-0" />
+                            <ArrowRight size={11} className="text-[#1b4332] opacity-70 group-hover:opacity-100 transition-opacity ml-0.5" />
+                          </Link>
+                        </div>
+                        <p className="text-[11px] text-[#727973] leading-relaxed mb-3">
+                          {lot.community} · Cuenca Amazónica Protegida
                         </p>
 
                         {/* Technical Specs 3-Column Grid */}
@@ -1837,6 +1851,21 @@ function Marketplace() {
       <SampleQuoteDialog lot={selectedLot} onClose={() => setSelectedLot(null)} />
     </main>
   );
+}
+
+
+/**
+ * Coordenadas Geográficas Reales para Visualización en OpenStreetMap
+ */
+function getLotGeoCoords(lotId: string) {
+  switch (lotId) {
+    case 'TA-0319': return { lat: -14.3167, lng: -69.4167, zoom: 14 }; // Sandia / Puno
+    case 'TA-0186': return { lat: -11.7500, lng: -69.6667, zoom: 14 }; // Tahuamanu
+    case 'TA-0512': return { lat: -14.3333, lng: -69.4333, zoom: 14 }; // Tambopata
+    case 'TA-0244': return { lat: -12.8667, lng: -72.7000, zoom: 14 }; // Quillabamba
+    case 'TA-0601': return { lat: -8.3833, lng: -74.5167, zoom: 14 };  // Ucayali
+    default: return { lat: -12.4667, lng: -69.2000, zoom: 14 };        // Boca Pariamanu / Madre de Dios
+  }
 }
 
 /**
@@ -2067,35 +2096,118 @@ function LotDetail() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
-              <span className="text-[10px] uppercase font-bold text-[#727973] block">Humedad Final</span>
-              <b className="text-base text-[#071b12] font-mono">{lot.specs.k1}</b>
-              <small className="text-[10px] text-[#2a7a4c] font-semibold block">{lot.specs.v1}</small>
+            {/* 1. Humedad */}
+            <div className="p-4 bg-[#faf9f4] rounded-xl border border-gray-200/70 hover:border-[#1b4332] transition-colors flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-bold text-[#727973]">Humedad Final</span>
+                <span className="p-1.5 rounded-lg bg-[#e0f2fe] text-[#0284c7]">
+                  <Droplets size={14} />
+                </span>
+              </div>
+              <div>
+                <b className="text-xl text-[#071b12] font-mono block">{lot.specs.v1}</b>
+                <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
+                  <Check size={10} /> Óptimo &lt; 7.5%
+                </span>
+              </div>
+              <small className="text-[9px] text-[#727973] block mt-1 pt-1 border-t border-gray-100">
+                Grano Seco Exportación
+              </small>
             </div>
-            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
-              <span className="text-[10px] uppercase font-bold text-[#727973] block">Fermentación</span>
-              <b className="text-base text-[#071b12] font-mono">{lot.specs.k2}</b>
-              <small className="text-[10px] text-[#2a7a4c] font-semibold block">{lot.specs.v2}</small>
+
+            {/* 2. Fermentación */}
+            <div className="p-4 bg-[#faf9f4] rounded-xl border border-gray-200/70 hover:border-[#1b4332] transition-colors flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-bold text-[#727973]">Fermentación</span>
+                <span className="p-1.5 rounded-lg bg-[#fef3c7] text-[#d97736]">
+                  <Thermometer size={14} />
+                </span>
+              </div>
+              <div>
+                <b className="text-xl text-[#071b12] font-mono block">{lot.specs.v2}</b>
+                <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
+                  <Check size={10} /> Grado Homogéneo
+                </span>
+              </div>
+              <small className="text-[9px] text-[#727973] block mt-1 pt-1 border-t border-gray-100">
+                Cajón Laurel Amazónico
+              </small>
             </div>
-            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
-              <span className="text-[10px] uppercase font-bold text-[#727973] block">Altitud Cultivo</span>
-              <b className="text-base text-[#071b12] font-mono">{lot.specs.k3}</b>
-              <small className="text-[10px] text-[#727973] block">{lot.specs.v3}</small>
+
+            {/* 3. Altitud */}
+            <div className="p-4 bg-[#faf9f4] rounded-xl border border-gray-200/70 hover:border-[#1b4332] transition-colors flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-bold text-[#727973]">Altitud Cultivo</span>
+                <span className="p-1.5 rounded-lg bg-[#eef3eb] text-[#1b4332]">
+                  <Mountain size={14} />
+                </span>
+              </div>
+              <div>
+                <b className="text-xl text-[#071b12] font-mono block">{lot.specs.v3}</b>
+                <span className="text-[10px] text-[#727973] font-semibold flex items-center gap-1 mt-0.5">
+                  Llanura Aluvial
+                </span>
+              </div>
+              <small className="text-[9px] text-[#727973] block mt-1 pt-1 border-t border-gray-100">
+                Bajo Dosel Primario
+              </small>
             </div>
-            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
-              <span className="text-[10px] uppercase font-bold text-[#727973] block">Cadmio / Metales</span>
-              <b className="text-base text-[#2a7a4c] font-mono">&lt; 0.28 ppm</b>
-              <small className="text-[10px] text-[#2a7a4c] font-semibold block">Aprobado UE Reg. 488</small>
+
+            {/* 4. Cadmio / Metales */}
+            <div className="p-4 bg-[#faf9f4] rounded-xl border border-gray-200/70 hover:border-[#1b4332] transition-colors flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-bold text-[#727973]">Cadmio / Metales</span>
+                <span className="p-1.5 rounded-lg bg-[#ecfdf5] text-[#059669]">
+                  <FlaskConical size={14} />
+                </span>
+              </div>
+              <div>
+                <b className="text-xl text-[#2a7a4c] font-mono block">&lt; 0.28 ppm</b>
+                <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
+                  <Check size={10} /> Conforme UE 488
+                </span>
+              </div>
+              <small className="text-[9px] text-[#727973] block mt-1 pt-1 border-t border-gray-100">
+                Purity Lab Certified
+              </small>
             </div>
-            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
-              <span className="text-[10px] uppercase font-bold text-[#727973] block">Puntaje Sensorial</span>
-              <b className="text-base text-[#954a17] font-mono">{lot.sensoryScore}</b>
-              <small className="text-[10px] text-[#954a17] font-semibold block">Cata de Especialidad</small>
+
+            {/* 5. Puntaje Sensorial */}
+            <div className="p-4 bg-[#faf9f4] rounded-xl border border-gray-200/70 hover:border-[#1b4332] transition-colors flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-bold text-[#727973]">Puntaje Sensorial</span>
+                <span className="p-1.5 rounded-lg bg-[#fdf5e6] text-[#954a17]">
+                  <Award size={14} />
+                </span>
+              </div>
+              <div>
+                <b className="text-xl text-[#954a17] font-mono block">{lot.sensoryScore}</b>
+                <span className="text-[10px] text-[#954a17] font-semibold flex items-center gap-1 mt-0.5">
+                  <Star size={10} className="fill-[#954a17]" /> Especialidad
+                </span>
+              </div>
+              <small className="text-[9px] text-[#727973] block mt-1 pt-1 border-t border-gray-100">
+                SCAA / Fine Flavor
+              </small>
             </div>
-            <div className="p-3.5 bg-[#faf9f4] rounded-xl border border-gray-200/60">
-              <span className="text-[10px] uppercase font-bold text-[#727973] block">Empaque GrainPro</span>
-              <b className="text-base text-[#071b12] font-mono">Hermético</b>
-              <small className="text-[10px] text-[#2a7a4c] font-semibold block">Atmósfera controlada</small>
+
+            {/* 6. Empaque */}
+            <div className="p-4 bg-[#faf9f4] rounded-xl border border-gray-200/70 hover:border-[#1b4332] transition-colors flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] uppercase font-bold text-[#727973]">Empaque Export.</span>
+                <span className="p-1.5 rounded-lg bg-[#f1f5f9] text-[#334155]">
+                  <PackageCheck size={14} />
+                </span>
+              </div>
+              <div>
+                <b className="text-xl text-[#071b12] font-mono block">GrainPro 60kg</b>
+                <span className="text-[10px] text-[#2a7a4c] font-semibold flex items-center gap-1 mt-0.5">
+                  <Check size={10} /> Atmósfera Hermética
+                </span>
+              </div>
+              <small className="text-[9px] text-[#727973] block mt-1 pt-1 border-t border-gray-100">
+                Yute con Trazabilidad QR
+              </small>
             </div>
           </div>
 
@@ -2169,36 +2281,45 @@ function LotDetail() {
               </span>
             </div>
 
-            {/* Radar Box */}
-            <div className="satellite-radar-box">
-              <img
-                className="satellite-radar-img"
-                src={`${import.meta.env.BASE_URL}amazon-parcel-map.jpg`}
-                alt="Vista satelital de la parcela y bosque circundante"
-              />
-              <div className="satellite-grid-overlay" />
-              <div className="radar-sweep" />
+            {/* OpenStreetMap Live Interactive Parcel Viewer */}
+            {(() => {
+              const geo = getLotGeoCoords(lot.id);
+              const bbox = `${geo.lng - 0.045}%2C${geo.lat - 0.035}%2C${geo.lng + 0.045}%2C${geo.lat + 0.035}`;
+              const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${geo.lat}%2C${geo.lng}`;
 
-              <div className="parcel-polygon-outline" title="Polígono delimitado de la parcela">
-                <span className="text-[7px] text-[#f7e6ce] absolute -top-3.5 left-1 font-mono">PARCELA {lot.id}</span>
-              </div>
+              return (
+                <div className="relative rounded-xl overflow-hidden border border-[#deded2] bg-[#f0eee4] shadow-inner h-[350px]">
+                  <iframe
+                    title={`OpenStreetMap Parcela ${lot.id}`}
+                    src={osmUrl}
+                    className="w-full h-full border-0 filter saturate-105"
+                    loading="lazy"
+                  />
+                  {/* PostGIS & Sentinel-2 Overlay Badges */}
+                  <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
+                    <span className="px-2.5 py-1 bg-[#143d29]/95 text-white backdrop-blur-xs text-[10px] font-bold tracking-wider uppercase rounded-md shadow-xs flex items-center gap-1">
+                      <ShieldCheck size={11} className="text-[#4ade80]" /> OpenStreetMap Live · PostGIS Verified
+                    </span>
+                    <span className="px-2.5 py-1 bg-[#071b12]/90 text-white backdrop-blur-xs text-[10px] font-bold tracking-wider uppercase rounded-md shadow-xs flex items-center gap-1">
+                      <Leaf size={10} className="text-[#d4a373]" /> Cobertura NDVI {lot.ndviScore} (Dosel Primario)
+                    </span>
+                  </div>
 
-              <div className="pulse-target" title="Coordenadas GPS de cosecha" />
+                  <div className="absolute bottom-3 left-3 bg-[#071b12]/90 text-white px-2.5 py-1 rounded-md text-[10px] font-mono backdrop-blur-xs flex items-center gap-1.5 pointer-events-none">
+                    <MapPin size={11} className="text-[#d4a373]" /> {lot.coordinates}
+                  </div>
 
-              <div className="satellite-badge-group">
-                <span className="satellite-status-pill">
-                  <ShieldCheck size={11} /> Cero Deforestación 2024-2025
-                </span>
-                <span className="ndvi-pill">
-                  <Leaf size={11} /> Cobertura NDVI {lot.ndviScore}
-                </span>
-              </div>
-
-              <div className="satellite-coords-pill">
-                <MapPin size={10} className="inline mr-1 text-[#d4a373]" />
-                {lot.coordinates}
-              </div>
-            </div>
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${geo.lat}&mlon=${geo.lng}#map=15/${geo.lat}/${geo.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute bottom-3 right-3 px-2.5 py-1 bg-white hover:bg-gray-100 text-[#071b12] text-[10px] font-semibold rounded-md shadow-sm flex items-center gap-1 transition-colors"
+                  >
+                    <ExternalLink size={10} /> Abrir en OpenStreetMap.org
+                  </a>
+                </div>
+              );
+            })()}
 
             <p className="text-[11px] text-[#727973] mt-3 leading-relaxed">
               Monitoreo satelital Sentinel-2 (ESA) procesado vía Supabase PostGIS. Cero pérdida de cobertura forestal en un radio de 5 km desde la fecha de corte regulatoria EUDR (31 de diciembre 2020).

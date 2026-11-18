@@ -722,6 +722,125 @@ button,a { -webkit-tap-highlight-color: transparent; }
   letter-spacing: 0.04em;
 }
 
+.supplier-main-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.supplier-avatar-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1b4332, #2d6a4f);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(11, 41, 27, 0.15);
+  flex-shrink: 0;
+}
+
+.supplier-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #525f56;
+}
+
+.supplier-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.supplier-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-supplier-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #954a17;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(149, 74, 23, 0.25);
+}
+
+.btn-supplier-contact:hover {
+  background: #b05b1f;
+}
+
+.btn-supplier-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #ffffff;
+  color: #1b4332;
+  border: 1.5px solid #c9d8c4;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-supplier-profile:hover {
+  background: #eef3eb;
+  border-color: #1b4332;
+}
+
+/* Chip del vendedor en tarjetas de catálogo */
+.card-seller-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: #f4f7f2;
+  border: 1px solid #c9d8c4;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1b4332;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.card-seller-chip:hover {
+  background: #e4ede1;
+  border-color: #1b4332;
+  transform: translateY(-1px);
+}
+
+.card-seller-chip-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1b4332;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+
 .tiered-pricing-box {
   background: #f5f4ef;
   border: 1px solid rgba(11, 41, 27, 0.08);
